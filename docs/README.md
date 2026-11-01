@@ -35,6 +35,8 @@ python tools/build_docs.py
 | Usar o painel e ler os gráficos | [08 — Painel e telemetria](08-painel-e-telemetria.md) |
 | Ver os problemas encontrados e por que cada decisão foi tomada | [09 — Diário de decisões](09-diario-de-decisoes.md) |
 | Consultar uma função específica | [10 — Referência do código](10-referencia-do-codigo.md) |
+| Ver o Claude jogando pelo servidor MCP e o que se aprendeu com isso | [11 — Claude jogando (MCP)](11-claude-jogando-mcp.md) |
+| Saber "como eu mudo X?", ver os parâmetros e as perguntas frequentes | [12 — Receitas e perguntas](12-receitas-e-perguntas.md) |
 | Relembrar um termo | [Glossário](glossario.md) |
 
 ## Resumo em uma página
@@ -42,7 +44,7 @@ python tools/build_docs.py
 ```mermaid
 flowchart LR
     G["game.js<br/>(o jogo original)"] -->|estado: posições, vidas, pontos| S["Sensores<br/>getState() + getInputs()"]
-    S -->|11 números entre 0 e 1| N["Rede neural<br/>11 → 6 → 6"]
+    S -->|19 números entre 0 e 1| N["Rede neural<br/>19 → 6 → 6"]
     N -->|6 valores entre 0 e 1| A["Atuadores<br/>act()"]
     A -->|setas, tiro, especial| G
     T["Treino<br/>(training.js)"] -->|nota de cada nave| E["Evolução<br/>(evolution.js)"]
@@ -50,14 +52,15 @@ flowchart LR
     T <-->|training.json| P["server.py"]
 ```
 
-1. **Sensores** — a cada frame, o estado do jogo vira **11 números entre 0 e 1** (altura e posição da nave,
-   tiro e inimigo mais próximos, munição especial, espaço livre acima e abaixo).
-2. **Rede neural** — 11 entradas → 6 neurônios escondidos → **6 saídas** (cima, baixo, esquerda, direita, tiro,
+1. **Sensores** — a cada frame, o estado do jogo vira **19 números entre 0 e 1** (altura e posição da nave,
+   tiro e inimigo mais próximos, munição especial, espaço livre acima e abaixo, item coletável mais próximo e
+   perigo iminente de tiros e inimigos).
+2. **Rede neural** — 19 entradas → 6 neurônios escondidos → **6 saídas** (cima, baixo, esquerda, direita, tiro,
    especial). Saída acima do limite = tecla apertada.
 3. **Neuroevolução** — 30 redes jogam; as melhores são copiadas, cruzadas e mutadas para formar a próxima geração.
    Ninguém escreve regras: o comportamento surge da seleção.
-4. **Treino** — cada nave joga **as 8 fases**, cada uma do zero. A nota soma, em cada fase, `pontos ÷ recorde da fase`
-   (cada fase vale até 1, o total vai de 0 a 8).
+4. **Treino** — cada nave joga **as 8 fases**, cada uma do zero. Cada fase vale até 1: metade `pontos ÷ recorde da fase`,
+   metade o progresso contra o chefe (o total vai de 0 a 8).
 5. **Telemetria** — painel embaixo do jogo e ao lado com a rede ao vivo, evolução da nota, mapa de calor por fase,
    o que matou as naves e as notas da geração.
 
@@ -73,7 +76,9 @@ flowchart LR
 | `ai.js` | Sensores (`getState`), atuadores (`act`) e o loop da IA |
 | `ai-panel.js` / `ai-panel.css` | Painel de controle à direita e todo o layout da página |
 | `ai-telemetry.js` | Telemetria: progresso da geração, rede ao vivo e gráficos |
-| `server.py` | Servidor local que serve o jogo e grava o treino em `training-data/` |
+| `server.py` | Servidor local que serve o jogo e grava o treino em `training-data/` (com proteções contra outros sites) |
+| `mcp-server/server.py` | Servidor MCP: deixa o Claude jogar pelo navegador sem janela ([11](11-claude-jogando-mcp.md)) |
+| `.mcp.json` | Registra o servidor MCP no Claude Code |
 | `.vscode/` | Configuração para rodar com F5 no VS Code |
-| `tools/` | `build_docs.py` e o modelo da página que geram `docs/documentacao.html` |
-| `training-data/` | Treino salvo (`training.json`, `best-network.json`) e backups |
+| `tools/` | `build_docs.py` e o modelo da página que geram `docs/documentacao.html`; `clone_demos.py` (clonagem de comportamento) |
+| `training-data/` | Treino salvo (`training.json`, `best-network.json`), backups `*-antes-*` e as demonstrações do Claude (`claude-demos.json`, `demo-network.json`) |

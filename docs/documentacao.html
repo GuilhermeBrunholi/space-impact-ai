@@ -257,6 +257,8 @@ python tools/build_docs.py
 | Usar o painel e ler os gráficos | [08 — Painel e telemetria](08-painel-e-telemetria.md) |
 | Ver os problemas encontrados e por que cada decisão foi tomada | [09 — Diário de decisões](09-diario-de-decisoes.md) |
 | Consultar uma função específica | [10 — Referência do código](10-referencia-do-codigo.md) |
+| Ver o Claude jogando pelo servidor MCP e o que se aprendeu com isso | [11 — Claude jogando (MCP)](11-claude-jogando-mcp.md) |
+| Saber "como eu mudo X?", ver os parâmetros e as perguntas frequentes | [12 — Receitas e perguntas](12-receitas-e-perguntas.md) |
 | Relembrar um termo | [Glossário](glossario.md) |
 
 ## Resumo em uma página
@@ -264,7 +266,7 @@ python tools/build_docs.py
 ```mermaid
 flowchart LR
     G["game.js<br/>(o jogo original)"] -->|estado: posições, vidas, pontos| S["Sensores<br/>getState() + getInputs()"]
-    S -->|11 números entre 0 e 1| N["Rede neural<br/>11 → 6 → 6"]
+    S -->|19 números entre 0 e 1| N["Rede neural<br/>19 → 6 → 6"]
     N -->|6 valores entre 0 e 1| A["Atuadores<br/>act()"]
     A -->|setas, tiro, especial| G
     T["Treino<br/>(training.js)"] -->|nota de cada nave| E["Evolução<br/>(evolution.js)"]
@@ -272,14 +274,15 @@ flowchart LR
     T <-->|training.json| P["server.py"]
 ```
 
-1. **Sensores** — a cada frame, o estado do jogo vira **11 números entre 0 e 1** (altura e posição da nave,
-   tiro e inimigo mais próximos, munição especial, espaço livre acima e abaixo).
-2. **Rede neural** — 11 entradas → 6 neurônios escondidos → **6 saídas** (cima, baixo, esquerda, direita, tiro,
+1. **Sensores** — a cada frame, o estado do jogo vira **19 números entre 0 e 1** (altura e posição da nave,
+   tiro e inimigo mais próximos, munição especial, espaço livre acima e abaixo, item coletável mais próximo e
+   perigo iminente de tiros e inimigos).
+2. **Rede neural** — 19 entradas → 6 neurônios escondidos → **6 saídas** (cima, baixo, esquerda, direita, tiro,
    especial). Saída acima do limite = tecla apertada.
 3. **Neuroevolução** — 30 redes jogam; as melhores são copiadas, cruzadas e mutadas para formar a próxima geração.
    Ninguém escreve regras: o comportamento surge da seleção.
-4. **Treino** — cada nave joga **as 8 fases**, cada uma do zero. A nota soma, em cada fase, `pontos ÷ recorde da fase`
-   (cada fase vale até 1, o total vai de 0 a 8).
+4. **Treino** — cada nave joga **as 8 fases**, cada uma do zero. Cada fase vale até 1: metade `pontos ÷ recorde da fase`,
+   metade o progresso contra o chefe (o total vai de 0 a 8).
 5. **Telemetria** — painel embaixo do jogo e ao lado com a rede ao vivo, evolução da nota, mapa de calor por fase,
    o que matou as naves e as notas da geração.
 
@@ -295,10 +298,12 @@ flowchart LR
 | `ai.js` | Sensores (`getState`), atuadores (`act`) e o loop da IA |
 | `ai-panel.js` / `ai-panel.css` | Painel de controle à direita e todo o layout da página |
 | `ai-telemetry.js` | Telemetria: progresso da geração, rede ao vivo e gráficos |
-| `server.py` | Servidor local que serve o jogo e grava o treino em `training-data/` |
+| `server.py` | Servidor local que serve o jogo e grava o treino em `training-data/` (com proteções contra outros sites) |
+| `mcp-server/server.py` | Servidor MCP: deixa o Claude jogar pelo navegador sem janela ([11](11-claude-jogando-mcp.md)) |
+| `.mcp.json` | Registra o servidor MCP no Claude Code |
 | `.vscode/` | Configuração para rodar com F5 no VS Code |
-| `tools/` | `build_docs.py` e o modelo da página que geram `docs/documentacao.html` |
-| `training-data/` | Treino salvo (`training.json`, `best-network.json`) e backups |
+| `tools/` | `build_docs.py` e o modelo da página que geram `docs/documentacao.html`; `clone_demos.py` (clonagem de comportamento) |
+| `training-data/` | Treino salvo (`training.json`, `best-network.json`), backups `*-antes-*` e as demonstrações do Claude (`claude-demos.json`, `demo-network.json`) |
 
 </script>
 <script type="text/markdown" data-key="01-visao-geral" data-file="01-visao-geral.md">
@@ -331,7 +336,7 @@ problema de **aprendizado por reforço**.
 
 | Pergunta | Resposta |
 |---|---|
-| Que cérebro? | **Perceptron multicamadas**: rede neural *feedforward* (a informação só anda para frente), uma camada escondida, ativação sigmoide — 11 → 6 → 6, 114 pesos |
+| Que cérebro? | **Perceptron multicamadas**: rede neural *feedforward* (a informação só anda para frente), uma camada escondida, ativação sigmoide — 19 → 6 → 6, 162 pesos |
 | Como aprende? | **Algoritmo genético** (computação evolutiva): população de 30, torneio, cruzamento, mutação, elitismo |
 | Que problema? | **Aprendizado por reforço**: não há gabarito de qual tecla era a certa, só uma recompensa no fim (os pontos). Resolvido por **busca direta da política**: testa cérebros inteiros e fica com os que pontuam mais |
 | Que agente? | **Reativo e determinístico**: decide só pelo que vê no frame atual, sem memória, sempre igual para a mesma situação |
@@ -356,14 +361,14 @@ O que ela **não** é:
 - **Não é supervisionada:** ninguém mostrou exemplos de jogada certa, por isso não há *backpropagation*.
 - **Não é deep learning:** a rede é rasa (uma camada escondida com 6 neurônios); redes profundas têm muitas camadas e
   milhares ou milhões de pesos.
-- **Não é IA generativa:** não gera texto nem imagem como o ChatGPT ou o Claude; transforma 11 números em 6 teclas.
+- **Não é IA generativa:** não gera texto nem imagem como o ChatGPT ou o Claude; transforma 19 números em 6 teclas.
 - **Não é aprendizado por reforço "clássico":** Q-learning, DQN e PPO aprendem a cada jogada, com gradiente; a
   neuroevolução só olha a nota final de cada nave.
 
 | Tipo | Aprende sozinho? | Precisa de gabarito? | Tamanho típico | Exemplo |
 |---|---|---|---|---|
 | Sistema de regras | não | não | alguns `if` | `brain-rules.js` |
-| **Neuroevolução (este projeto)** | sim | não, só a nota | 114 pesos | `brain-nn.js` + `evolution.js` |
+| **Neuroevolução (este projeto)** | sim | não, só a nota | 162 pesos | `brain-nn.js` + `evolution.js` |
 | Reforço com gradiente | sim | não, só a recompensa | milhares a milhões | DQN jogando Atari |
 | Supervisionado | sim | sim | milhares a milhões | reconhecer dígitos escritos à mão |
 | IA generativa (LLM) | sim | sim, prever a próxima palavra | bilhões | ChatGPT, Claude |
@@ -459,6 +464,8 @@ flowchart TB
         tele[ai-telemetry.js]
     end
     server[server.py] --- data[(training-data/)]
+    mcp[mcp-server/server.py] -->|Playwright abre o jogo| server
+    mcp -->|chama getState, act, update| ai
 
     ai -->|lê estado, escreve keys| game
     ai --> rules
@@ -559,6 +566,11 @@ O servidor **continua rodando** depois de fechar o navegador. Para parar: `Ctrl+
 Mantenha a aba **visível** enquanto treina: navegadores quase congelam abas escondidas (`requestAnimationFrame`
 desacelera para ~1 quadro por segundo), e o treino cai junto.
 
+## Opcional: deixar o Claude jogar (MCP)
+
+Precisa de Python 3 com um ambiente virtual e do Edge ou Chrome. A instalação e o uso estão em
+[11 — Claude jogando](11-claude-jogando-mcp.md#instalação). O treino e o jogo normal **não** dependem disso.
+
 ## Atalhos de teclado do jogo
 
 | Tecla | Ação |
@@ -608,13 +620,16 @@ Lê o jogo e devolve um objeto "limpo", sem referências às classes do jogo:
 {
   player: { x, y, width, height, hitbox: { y, height } },
   lives, score, specialCount, specialType,         // globais do jogo
-  enemies:          [{ x, y, width, height, vx, movement }],
+  enemies:          [{ x, y, width, height, vx, movement, isPowerUp, powerup }],
   enemyProjectiles: [{ x, y, width, height, vx, vy, homing }],
   terrain:          [{ x, y, width, height }],     // hitboxes do cenário (chão, teto, pilares)
 }
 ```
 
 - `enemies` inclui os **chefes** (Boss1–8, até 380 × 380 px) — eles vivem em `currentLevel.enemies` como os outros.
+- `enemies` também inclui os **itens coletáveis** (`PowerUp`: vida, míssil, laser ou parede). Eles **não machucam**:
+  encostar neles dá vida ou munição. `isPowerUp: true` os distingue e `powerup` diz qual é. Antes disso a rede os
+  tratava como inimigos e fugia deles.
 - `enemyProjectiles` mistura `EnemyMissile` (`homing: true`) e tiros comuns de inimigos (`Projectile`).
 - `terrain` vem de `currentLevel.background[].hitbox[]`. **Encostar no terreno mata, mesmo com escudo.**
 
@@ -623,7 +638,7 @@ números normalizados — próxima camada).
 
 ## Camada 2 — `getInputs(state)` (brain-nn.js)
 
-Transforma o estado numa **lista fixa de 11 números entre 0 e 1**. Fixa porque a rede tem exatamente 11 entradas:
+Transforma o estado numa **lista fixa de 19 números entre 0 e 1**. Fixa porque a rede tem exatamente 19 entradas:
 se um número faltar (por exemplo, quando não há tiros na tela), tudo desalinha.
 
 | # | Nome no painel | Como é calculado | 0 significa | 1 significa |
@@ -639,6 +654,14 @@ se um número faltar (por exemplo, quando não há tiros na tela), tudo desalinh
 | 8 | Tem especial? | `specialCount > 0` | sem munição especial | tem |
 | 9 | Espaço acima | espaço livre até o teto | encostando no teto | 150 px ou mais livres |
 | 10 | Espaço abaixo | espaço livre até o chão | encostando no chão | 150 px ou mais livres |
+| 11 | Existe item? | 1 se há item coletável à frente | não há | há |
+| 12 | Dist. item | igual ao 3, para itens (largura máxima 80) | colado | longe |
+| 13 | Altura item | igual ao 4, para itens | item bem acima | bem abaixo |
+| 14 | Item é vida? | o item mais próximo é uma vida | outro item (ou nenhum) | vida |
+| 15 | Perigo tiro | urgência do tiro que vai acertar a nave primeiro | nada vem na direção da nave | impacto agora |
+| 16 | Onde: tiro | altura (com folga) de onde o tiro vai passar, em relação à nave | bem acima | bem abaixo (0,5 = alinhado) |
+| 17 | Perigo inimigo | igual ao 15, para inimigos | nada vem | impacto agora |
+| 18 | Onde: inimigo | igual ao 16, para inimigos | bem acima | bem abaixo |
 
 ### Normalização
 
@@ -681,6 +704,25 @@ situação real e diferente. A flag avisa a rede para ignorar os outros dois nú
 
 Por que posição **relativa** e não absoluta: a rede precisa saber "o inimigo está acima de mim", não "o inimigo está
 em y = 230". A posição absoluta da nave já entra nas entradas 0 e 1.
+
+Nos inimigos (entradas 5–7) os itens coletáveis ficam **de fora**: eles têm o sensor próprio, 11–14.
+
+### `describeDanger()` — perigo iminente (entradas 15–18)
+
+"O tiro mais próximo" não diz se ele vai **acertar**: um tiro 100 px à frente, mas 200 px acima, é inofensivo; um
+tiro mais longe, na altura da nave, não. Para cada tiro (ou inimigo) à frente, a função **projeta o movimento em
+linha reta** até a ponta da nave:
+
+1. `tempo = distância ÷ velocidade de aproximação` (em frames); se o objeto se afasta, é ignorado;
+2. só conta o que chega em até **60 frames** (1 s, `DANGER_HORIZON`);
+3. a altura do objeto nesse instante (`y + vy × tempo`), com **20 px de folga** em cima e embaixo
+   (`DANGER_MARGIN`, porque a nave também se mexe até lá), cruza a hitbox da nave?
+4. dos que cruzam, vale o que chega **primeiro**.
+
+Saída: `[urgência, altura]`. Urgência = `1 − tempo ÷ 60` (0 = nada vem, 1 = impacto agora); a altura diz **para que
+lado desviar**. Limite: os inimigos não informam `vy`, então valem como se andassem em linha reta (ondas e zigue-zague
+fogem disso); só os mísseis teleguiados informam `vy`. A folga cobre parte do erro. O terreno não entra aqui — já tem
+os sensores 9 e 10.
 
 ### `describeTerrain()` — espaço acima e abaixo
 
@@ -760,17 +802,19 @@ durante os estudos e foi mantida.
 <script type="text/markdown" data-key="04-rede-neural" data-file="04-rede-neural.md">
 # 04 — Rede neural
 
-A rede neural é o cérebro da Fase 2. Ela recebe os 11 números do `getInputs()` e devolve 6 números, um para cada
+A rede neural é o cérebro da Fase 2. Ela recebe os 19 números do `getInputs()` e devolve 6 números, um para cada
 tecla. Toda a rede é escrita à mão em `brain-nn.js`, sem bibliotecas, para dar para ver cada conta.
 
-## Formato: 11 → 6 → 6
+## Formato: 19 → 6 → 6
 
 ```mermaid
 flowchart LR
-    subgraph Entradas [11 entradas]
+    subgraph Entradas [19 entradas]
         i0[Altura nave] & i1[Horizontal nave] & i2[Existe tiro?] & i3[Dist. tiro] & i4[Altura tiro]
         i5[Existe inimigo?] & i6[Dist. inimigo] & i7[Altura inimigo] & i8[Tem especial?]
         i9[Espaço acima] & i10[Espaço abaixo]
+        i11[Existe item?] & i12[Dist. item] & i13[Altura item] & i14[Item é vida?]
+        i15[Perigo tiro] & i16[Onde: tiro] & i17[Perigo inimigo] & i18[Onde: inimigo]
     end
     subgraph Escondida [6 neurônios escondidos]
         h0((h0)) & h1((h1)) & h2((h2)) & h3((h3)) & h4((h4)) & h5((h5))
@@ -781,9 +825,9 @@ flowchart LR
     Entradas --> Escondida --> Saídas
 ```
 
-- **Camada escondida:** 6 neurônios × (11 pesos + 1 bias) = **72 números**.
+- **Camada escondida:** 6 neurônios (o padrão; ver [abaixo](#número-de-neurônios-escondidos-configurável)) × (19 pesos + 1 bias) = **120 números**.
 - **Camada de saída:** 6 neurônios × (6 pesos + 1 bias) = **42 números**.
-- **Total: 114 números.** Esses 114 números *são* o cérebro: duas redes com os mesmos 114 números jogam igual.
+- **Total: 162 números.** Esses 162 números *são* o cérebro: duas redes com os mesmos 162 números jogam igual.
 
 "Totalmente conectada": cada neurônio de uma camada recebe **todas** as saídas da camada anterior.
 
@@ -889,14 +933,36 @@ completo em [09 — Diário de decisões](09-diario-de-decisoes.md#a-nave-não-d
 
 ## A rede como lista: o genoma
 
-Para a evolução, a rede é "achatada" numa lista de 114 números (`networkToGenome`), nesta ordem:
+Para a evolução, a rede é "achatada" numa lista de 162 números (`networkToGenome`), nesta ordem:
 
 ```
-[ h0: w0..w10, bias ] [ h1: … ] … [ h5: … ]      ← 6 × 12 = 72 (camada escondida)
+[ h0: w0..w18, bias ] [ h1: … ] … [ h5: … ]      ← 6 × 20 = 120 (camada escondida)
 [ up: w0..w5, bias ] [ down: … ] … [ special: … ] ← 6 × 7  = 42 (camada de saída)
 ```
 
 `genomeToNetwork` faz o caminho de volta. Ver [05 — Neuroevolução](05-neuroevolucao.md).
+
+## Número de neurônios escondidos (configurável)
+
+O padrão é 6 (`DEFAULT_HIDDEN_COUNT`), mas o painel tem um slider **Neurônios escondidos** (2 a 32). O tamanho do genoma
+é `neurônios × 20 + 6 × (neurônios + 1)`: 162 com 6, 214 com 8, 318 com 12.
+
+| Neurônios | Genoma |
+|---|---|
+| 6 | 162 |
+| 8 | 214 |
+| 12 | 318 |
+
+`setHiddenCount()` (`training.js`) converte **todas** as redes do treino de uma vez, com `resizeGenome()`:
+
+- **Aumentar:** os neurônios novos nascem aleatórios, mas com **peso 0 em todas as saídas**. A rede continua dando
+  exatamente as mesmas saídas (conferido no navegador: 6 → 12 sem diferença), e a evolução ajusta os novos.
+- **Diminuir:** os últimos neurônios são cortados. A rede pode jogar diferente, então o painel pede confirmação, a
+  geração recomeça e a melhor nave perde a nota (não é mais a rede que foi avaliada).
+
+Mais neurônios dão mais capacidade, mas aumentam o espaço de busca: com 30 naves por geração a evolução pode andar
+mais devagar. O número vale ao soltar o slider e é salvo no treino (`hiddenCount`); treinos antigos, sem o campo,
+carregam como 6.
 
 ## Como a rede cresceu (e como treinos antigos são aproveitados)
 
@@ -904,7 +970,8 @@ Para a evolução, a rede é "achatada" numa lista de 114 números (`networkToGe
 |---|---|---|---|---|
 | 1 | 8 | 5 | 89 | posição da nave, tiro e inimigo mais próximos |
 | 2 | 9 | 6 | 102 | + "tem especial?" e a saída `special` |
-| 3 (atual) | 11 | 6 | 114 | + espaço acima e abaixo (terreno) |
+| 3 | 11 | 6 | 114 | + espaço acima e abaixo (terreno) |
+| 4 (atual) | 19 | 6 | 162 | + item coletável (4 entradas) e perigo iminente de tiros e inimigos (4 entradas) |
 
 Entradas e saídas novas sempre entram **no fim** da lista. Assim, `upgradeGenome()` converte um genoma antigo sem
 perder o aprendizado:
@@ -939,7 +1006,7 @@ A analogia biológica:
 | Biologia | Aqui |
 |---|---|
 | Indivíduo | uma nave (uma rede neural) |
-| DNA | o genoma: a lista de 114 pesos |
+| DNA | o genoma: a lista de 162 pesos |
 | Aptidão (*fitness*) | a nota da nave nas 8 fases |
 | Seleção natural | torneio: as de nota maior têm mais filhos |
 | Reprodução sexuada | cruzamento: o filho mistura os pesos de dois pais |
@@ -986,7 +1053,7 @@ melhores faria a população inteira virar cópia de uma só muito rápido.)
 
 ### Cruzamento uniforme — `crossover()`
 
-Para cada um dos 114 pesos, joga uma moeda: o filho herda o peso do pai A ou do pai B.
+Para cada um dos 162 pesos, joga uma moeda: o filho herda o peso do pai A ou do pai B.
 
 ```js
 genomeA.map((gene, i) => (Math.random() < 0.5 ? gene : genomeB[i]));
@@ -1044,10 +1111,11 @@ a saída `down` voltou a existir. O conserto roda **uma vez**: depois disso o ar
 
 | Função | O que faz |
 |---|---|
-| `networkToGenome(net)` / `genomeToNetwork(genome)` | rede ↔ lista de 114 números |
+| `networkToGenome(net)` / `genomeToNetwork(genome, hiddenCount)` | rede ↔ lista de números (162 com 6 neurônios) |
+| `resizeGenome(genome, from, to)` | muda o número de neurônios escondidos (mais: peso 0 nas saídas; menos: corta os últimos) |
 | `randomGenome()` | genoma de uma rede nova aleatória |
 | `createPopulation()` | 30 genomas aleatórios, nota 0 |
-| `upgradeGenome(genome)` | converte genomas de 89 ou 102 números para o formato atual (ver [04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
+| `upgradeGenome(genome)` | converte genomas de 89, 102 ou 114 números para o formato atual (ver [04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
 | `genomeLength(inputs, outputs)` | tamanho de genoma para um formato de rede |
 | `clampWeight(value)` | prende um peso entre −4 e +4 |
 
@@ -1121,17 +1189,34 @@ Level.prototype.playerDead = function () {
 nada bate, foi um tiro. Funciona porque, no momento em que o jogo chama `playerDead()`, o objeto que matou ainda está
 nas listas (o jogo só remove os objetos marcados como `delete` no fim do frame).
 
-## A nota (fitness) — versão 3
+## A nota (fitness) — versão 4
 
 ### A ideia
 
 ```
-nota da nave = Σ (pontos na fase ÷ recorde da fase)      para as 8 fases
+nota da fase = ½ × (pontos na fase ÷ recorde da fase) + ½ × progresso contra o chefe
+nota da nave = Σ nota da fase                              para as 8 fases
 ```
 
-- cada fase vale **até 1**; a nota vai de **0 a 8**;
+- cada fase vale **até 1** (`POINTS_SHARE` = ½ pontos, ½ chefe); a nota vai de **0 a 8**;
 - **recorde** = a maior pontuação já vista naquela fase (`training.levelRecords`). Ele só sobe e é a "régua";
 - os pontos de cada fase incluem um **desempate** de 0,1 ponto por segundo vivo (`SURVIVAL_POINTS_PER_SECOND`).
+
+### O progresso contra o chefe
+
+Só se passa a fase **matando o chefe** (`levelComplete` só vira `true` quando ele morre). Mas os pontos sozinhos não
+distinguem "morreu antes do chefe" de "chegou nele e não conseguiu vencer": as redes aleatórias nunca chegavam à
+vitória, então não havia caminho gradual até ela. O progresso (`bossProgress()`) vale:
+
+| Situação | Progresso |
+|---|---|
+| nem chegou ao chefe | 0 |
+| chegou vivo | 0,3 (`BOSS_REACHED`) |
+| tirou vida dele | 0,3 + 0,65 × (fração de vida tirada), até 0,95 (`BOSS_DAMAGE_MAX`) |
+| matou | 1 |
+
+`trackBoss()` roda a cada frame: guarda a vida do chefe quando ele aparece (`bossMaxHp`) e a vida atual (`bossHp`).
+O progresso de cada fase fica em `levelBoss` (por nave) e também em `bestEver`.
 
 ### Por que não somar os pontos
 
@@ -1151,7 +1236,8 @@ recorde, ir de 0 a 100 numa fase cujo recorde é 100 vale tanto quanto ir de 0 a
 - **Cada fase é limitada a 1** (`Math.min(1, …)`): passar do recorde não dá mais que 1.
 - **A nota pode cair sem a rede piorar**: quando um recorde sobe, a régua fica mais exigente para todos.
 - A **melhor de todas** (`bestEver`) também é medida de novo pelos recordes atuais a cada geração, para a comparação
-  ser justa.
+  ser justa. Uma `bestEver` de treino anterior à versão 4 não tem `levelBoss`: fica com nota `-Infinity` (dá para
+  assisti-la, mas qualquer nave nova a supera).
 - Durante a partida, "nota atual" no painel é uma **prévia** com os recordes de agora (`currentFitness()`).
 
 ### Histórico das versões da nota
@@ -1160,7 +1246,8 @@ recorde, ir de 0 a 100 numa fase cujo recorde é 100 vale tanto quanto ir de 0 a
 |---|---|---|
 | 1 | pontos + 1 por segundo vivo, numa partida contínua a partir da fase 1 (até 180 s) | 180 s não chegavam à fase 5; tempo vivo premiava fugir |
 | 2 | soma dos pontos nas 8 fases, cada uma do zero | fases que rendem muito dominavam a nota |
-| 3 (atual) | soma de pontos ÷ recorde por fase | — |
+| 3 | soma de pontos ÷ recorde por fase | pontos não distinguem "morreu antes do chefe" de "chegou nele e perdeu" |
+| 4 (atual) | ½ pontos ÷ recorde + ½ progresso contra o chefe, por fase | — |
 
 Ao carregar um treino de outra versão, os pesos são mantidos, os recordes são reconstruídos a partir do que foi
 registrado (melhor nave e telemetria), e o gráfico de evolução recomeça (notas de escalas diferentes não se comparam).
@@ -1279,6 +1366,22 @@ Detalhes de implementação:
 - `allow_reuse_address = False`: no Windows, reaproveitar o endereço deixaria **dois servidores** escutarem a mesma
   porta sem erro. Se a porta 8000 estiver ocupada, ele avisa e encerra com código 0 (o VS Code segue normalmente).
 
+### Segurança do servidor
+
+Escutar só em `127.0.0.1` não basta: qualquer página aberta no navegador consegue mandar um `POST` ou `DELETE` para
+`localhost:8000` (e um DNS malicioso pode fazer um site parecer ser `localhost`). Por isso o `server.py` confere:
+
+- **`Host`**: só `localhost:8000` e `127.0.0.1:8000` (contra DNS rebinding); outro valor recebe `403`;
+- **`Origin`** nas escritas (`POST`/`DELETE`): se vier, tem de ser `http://localhost:8000` ou `http://127.0.0.1:8000`;
+- **`Content-Type: application/json`** no `POST`: um formulário de outro site não consegue enviá-lo sem pedir
+  permissão antes (e o servidor não responde a esse pedido);
+- **formato**: o corpo precisa ser um objeto com a lista `genomes`; senão, `400`;
+- **o que é entregue**: caminhos com um trecho começando em `.` (`.git`, `.mcp.json`) e a pasta `mcp-server/` recebem
+  `403`.
+
+Isso protege contra outros sites, não contra outros programas da própria máquina. O servidor não tem login e não deve
+ser exposto na rede.
+
 ### Como a página decide entre arquivo e `localStorage`
 
 `loadTraining()` faz um `GET /api/training`. Se a resposta tem `Content-Type: application/json`, **o servidor manda**
@@ -1292,17 +1395,19 @@ clicar rápido em "Iniciar treino" poderia começar do zero e sobrescrever o tre
 
 ```jsonc
 {
-  "fitnessVersion": 3,            // versão da fórmula da nota (ver 06 — Treino)
+  "fitnessVersion": 4,            // versão da fórmula da nota (ver 06 — Treino)
   "weightLimit": 4,               // limite de pesos com que estas redes treinaram (ver 05)
+  "hiddenCount": 6,               // neurônios escondidos (ver 04); ausente = 6
   "actionWeights": { "up": 0, "down": 0, "left": -3, "right": -3, "fire": 2, "special": -8 },
   "generation": 26,               // próxima geração a jogar
-  "genomes": [[…114 números…], …],          // as 30 redes da população atual (ainda sem nota)
+  "genomes": [[…162 números…], …],          // as 30 redes da população atual (ainda sem nota)
   "bestEver": {
-    "genome": […114 números…],
+    "genome": […162 números…],
     "fitness": 4.23,              // nota (0 a 8) medida pelos recordes atuais
     "points": 5612,               // soma dos pontos crus
     "generation": 5,
-    "levelScores": [532, 534, 434, 440, 1010, 1703, 433, 26]
+    "levelScores": [532, 534, 434, 440, 1010, 1703, 433, 26],
+    "levelBoss": [1, 0.84, 0, 0.3, 0, 0, 0, 0]   // progresso contra o chefe em cada fase (0 a 1)
   },
   "history": [                    // uma entrada por geração completa
     {
@@ -1331,9 +1436,10 @@ atual recomeça da primeira nave.
 
 | Diferença no arquivo | O que acontece ao carregar |
 |---|---|
-| Genomas de 89 ou 102 números | `upgradeGenome()`: entradas novas com peso 0, saídas novas aleatórias ([04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
+| Genomas de 89, 102 ou 114 números | `upgradeGenome()`: entradas novas com peso 0, saídas novas aleatórias ([04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
 | Sem `weightLimit` (ou diferente de 4) | `repairGenome()`: reescala todas as redes e revive saídas travadas em metade da população; o `bestEver` só é reescalado ([05](05-neuroevolucao.md#conserto-de-redes-saturadas--repairgenome)) |
-| `fitnessVersion` diferente | mantém os pesos; recria os recordes a partir da melhor nave e do histórico; zera o histórico e as notas da última geração |
+| `fitnessVersion` diferente | mantém os pesos; recria os recordes a partir da melhor nave e do histórico; zera o histórico e as notas da última geração; uma `bestEver` sem `levelBoss` perde a nota (`-Infinity`) |
+| Sem `hiddenCount` | 6 neurônios escondidos |
 | Sem `actionWeights` | usa os pesos de tecla padrão |
 | Sem `lastScores` / `levelRecords` | começa vazio |
 
@@ -1347,6 +1453,7 @@ Antes de cada mudança que alterava o formato ou a população, foi feita uma c�
 | `training-antes-terreno.json` | 88 | sensores de terreno (102 → 114 números) |
 | `training-antes-equilibrio.json` | 115 | nota equilibrada por fase (versão 3) |
 | `training-antes-limite-pesos.json` | 128 | limite de ±4 e conserto das redes saturadas |
+| `training-antes-sensores.json` (e `best-network-antes-sensores.json`) | 260 | 19 entradas (114 → 162 números): item coletável e perigo iminente |
 
 Para voltar a um backup: pare o treino, renomeie o backup para `training.json` e recarregue a página. A conversão
 automática cuida do formato.
@@ -1392,6 +1499,7 @@ e para "Assistir a melhor". O treino ignora essa escolha e sempre passa pelas 8 
 | Controle | Variável | Faixa | Efeito |
 |---|---|---|---|
 | Nova rede aleatória | `network` | — | sorteia um cérebro novo (não mexe no treino) |
+| Neurônios escondidos | `HIDDEN_COUNT` | 2 – 32 | tamanho da camada escondida; vale ao soltar o slider e converte todas as redes do treino ([04](04-rede-neural.md#número-de-neurônios-escondidos-configurável)) |
 | Limite para apertar | `pressThreshold` | 0,1 – 0,9 | saída acima disso = tecla apertada |
 | Peso de cada tecla | `actionWeights` | −10 – +10 | empurrão fixo em cada saída ([04](04-rede-neural.md#peso-de-cada-tecla-actionweights)) |
 | Intervalo entre tiros | `fireCooldown` | 50 – 1000 ms | ritmo máximo de tiro |
@@ -1418,7 +1526,8 @@ parâmetros valem só para a sessão.
 Abaixo:
 
 - **30 casinhas**, uma por nave: verde = já jogou, amarela = jogando agora.
-- **Pontos da nave atual por fase**: 8 cartões; a cor da **borda de baixo** diz como a fase terminou (mesmas cores
+- **Pontos da nave atual por fase**: 8 cartões, cada um com os pontos e o **progresso contra o chefe** (`chefe 0%`,
+  `chefe 84%`, `chefe ✓` se ele morreu); a cor da **borda de baixo** diz como a fase terminou (mesmas cores
   do gráfico "o que matou"); a fase em andamento fica amarela com a pontuação parcial. Passe o mouse para ver o
   motivo por escrito.
 - **Teclas apertadas nesta geração**: % dos frames em que cada tecla esteve apertada, somando todas as naves
@@ -1428,17 +1537,19 @@ Abaixo:
 
 O diagrama da rede **atual** (a nave jogando, a melhor sendo assistida, ou a rede aleatória):
 
-- à esquerda, as **11 entradas** com o valor atual de cada uma;
+- à esquerda, as **19 entradas** com o valor atual de cada uma;
 - no meio, os **6 neurônios escondidos**;
 - à direita, as **6 saídas** com o valor (já com o peso da tecla);
 - cada **linha** é um peso: verde = positivo, vermelho = negativo; grossura e opacidade = tamanho do peso;
 - cada **bolinha** acende conforme o valor do neurônio (0 = escura, 1 = clara); saída **amarela** = tecla apertada.
 
+O diagrama tem 440 px de altura para os 19 rótulos caberem sem se sobrepor.
+
 Funciona até no modo `Você`: dá para jogar e ver o que a rede faria.
 
 ### Evolução da nota (0 a 8)
 
-Linha **verde** = melhor nota de cada geração; linha **cinza** = média. A escala vai de 0 até a maior nota do
+Cada fase vale até 1: metade `pontos ÷ recorde`, metade o progresso contra o chefe. Linha **verde** = melhor nota de cada geração; linha **cinza** = média. A escala vai de 0 até a maior nota do
 histórico. Olhe a tendência da **média** — a melhor oscila com o ruído da partida
 (ver [05](05-neuroevolucao.md#ruído-na-nota)). A nota pode cair quando um recorde sobe.
 
@@ -1670,7 +1781,42 @@ sumia no ruído da fase 7.
 
 **Decisão:** nota equilibrada (versão 3) — cada fase vale `pontos ÷ recorde`, até 1. Com cuidados: a régua é a mesma
 para a geração inteira, piso de 10 no recorde, e a melhor de todas é medida de novo a cada geração
-(ver [06](06-treino.md#a-nota-fitness--versão-3)).
+(ver [06](06-treino.md#a-nota-fitness--versão-4)).
+
+## Item coletável era "inimigo"
+
+**Observação:** o subagente que jogou pelo servidor MCP notou que "colidir com inimigos grandes e lentos dá vida
+extra". Eram os `PowerUp` (vida, míssil, laser, parede), que o jogo guarda na mesma lista dos inimigos. A rede os via
+como ameaça e fugia deles.
+
+**Decisão:** `getState()` passou a marcar `isPowerUp` e o tipo; a rede ganhou sensores próprios para o item mais
+próximo (entradas 11–14) e o item saiu do sensor de inimigo. O `brain-rules.js` também os ignora.
+
+## O tiro mais próximo não é o tiro perigoso
+
+**Observação:** "tiro mais próximo" não diz se ele vai acertar. Um agente jogando pelo MCP desviava olhando a altura
+de cada tiro e onde ele ia passar — informação que as 11 entradas não tinham.
+
+**Decisão:** sensores de **perigo iminente** (entradas 15–18) para tiros e para inimigos: projetam o movimento em
+linha reta, veem se cruza a hitbox em até 1 s (com 20 px de folga) e devolvem urgência e para que lado desviar.
+Entradas novas entram no fim e os treinos antigos são convertidos com peso 0 (114 → 162 números).
+
+**Tentativa que não deu certo:** aproveitar a partida do agente como "demonstração" (clonagem de comportamento).
+Foram 592 pares estado → teclas; a rede só aprendeu a atirar (cima/baixo ficaram perto do que se acerta nunca
+apertando). O motivo: as decisões do agente dependiam da posição exata de cada tiro, que as 11 entradas não mostravam.
+Daí a decisão dos sensores acima. Dados e script ficaram em `training-data/claude-demos.json` e `tools/clone_demos.py`.
+
+**Bug achado de passagem:** o servidor MCP mostrava `hitboxTop` somando o `y` duas vezes (nave em y = 220 aparecia com
+hitbox em 450). O agente concluiu "a hitbox real é maior que a listada". Corrigido em `mcp-server/server.py`.
+
+## Só se passa de fase matando o chefe
+
+**Observação:** `levelComplete` só vira `true` quando o chefe morre, então, no treino, "cleared" exige vencê-lo. As
+redes aleatórias nunca chegavam lá e a nota (só pontos) não diferenciava "morreu antes do chefe" de "chegou nele".
+
+**Decisão:** nota versão 4 — metade da fase vale `pontos ÷ recorde`, metade o progresso contra o chefe (0,3 por chegar
+vivo, até 0,95 tirando vida, 1 ao matar). Ver [06](06-treino.md#o-progresso-contra-o-chefe). Num teste, uma nave
+aleatória chegou ao chefe e tirou vida dele nas fases 2 e 3 (progresso 0,84 e 0,69).
 
 ## Gráficos deslocados
 
@@ -1741,6 +1887,9 @@ Várias rodadas a partir de prints do usuário:
 5. **Tempo de jogo ≠ tempo de relógio.** Tudo que é regra do jogo conta frames.
 6. **Faça backup antes de mudar o formato do treino** — e escreva a conversão em vez de jogar o treino fora.
 7. **Teste de controle.** Comparar "com" e "sem" (sensores) evitou atribuir a uma mudança um ganho que veio de outra.
+8. **Cada coisa do jogo precisa de um sensor com o nome certo.** Um item coletável na lista dos inimigos virou
+   "inimigo" para a rede.
+9. **Dados de demonstração só ajudam se as entradas mostram o que o demonstrador via.**
 
 </script>
 <script type="text/markdown" data-key="10-referencia-do-codigo" data-file="10-referencia-do-codigo.md">
@@ -1805,12 +1954,16 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `PLAY_TOP` (50), `PLAY_LEFT` (0) | limites da área de jogo |
 | `MAX_SHOT_WIDTH` (50), `MAX_ENEMY_WIDTH` (380) | maiores larguras de tiro e inimigo, para a distância mínima |
 | `TERRAIN_LOOKAHEAD` (150), `TERRAIN_RANGE` (150) | alcance e escala dos sensores de terreno |
-| `INPUT_COUNT` (11) | número de entradas |
+| `DANGER_HORIZON` (60), `DANGER_MARGIN` (20), `MAX_POWERUP_WIDTH` (80) | horizonte (frames) e folga vertical (px) do perigo iminente; maior largura de item |
+| `INPUT_COUNT` (19) | número de entradas |
 | `normalize(value, min, max)` | normalização min-max presa entre 0 e 1 |
 | `describeNearest(objects, player, maxObjectWidth)` | `[existe?, distância, altura relativa]` do objeto mais próximo à frente |
 | `describeTerrain(terrain, player)` | `[espaço acima, espaço abaixo]` |
-| `getInputs(state)` | as 11 entradas ([03](03-sensores-e-acoes.md#camada-2--getinputsstate-brain-nnjs)) |
-| `HIDDEN_COUNT` (6), `ACTION_KEYS`, `OUTPUT_COUNT` (6) | formato da rede |
+| `describeDanger(objects, player)` | `[urgência, altura]` do objeto que vai acertar a nave primeiro ([03](03-sensores-e-acoes.md#describedanger--perigo-iminente-entradas-1518)) |
+| `describeCollectible(powerups, player)` | `[existe?, distância, altura, é vida?]` do item mais próximo |
+| `nearestAhead(objects, player)` | o objeto mais próximo à frente da nave, ou `null` |
+| `getInputs(state)` | as 19 entradas ([03](03-sensores-e-acoes.md#camada-2--getinputsstate-brain-nnjs)) |
+| `HIDDEN_COUNT` (variável, padrão `DEFAULT_HIDDEN_COUNT` = 6; de `MIN_HIDDEN_COUNT` 2 a `MAX_HIDDEN_COUNT` 32), `ACTION_KEYS`, `OUTPUT_COUNT` (6) | formato da rede |
 | `pressThreshold` | limite para apertar (0,5; painel) |
 | `actionWeights` | peso fixo de cada tecla (painel; salvo com o treino) |
 | `neuron(inputs, weights, bias)` | soma ponderada + bias |
@@ -1829,7 +1982,9 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `POPULATION_SIZE` (30), `ELITE_COUNT` (2), `TOURNAMENT_SIZE` (3) | parâmetros fixos |
 | `mutationRate` (0,1), `mutationStrength` (0,5) | parâmetros do painel |
 | `WEIGHT_LIMIT` (4) | limite absoluto de cada peso |
-| `networkToGenome(net)` / `genomeToNetwork(genome)` | rede ↔ lista de 114 números |
+| `networkToGenome(net)` / `genomeToNetwork(genome, hiddenCount)` | rede ↔ lista de números (162 com 6 neurônios) |
+| `resizeGenome(genome, from, to)` | muda o número de neurônios escondidos |
+| `setHiddenCount(count)` (training.js) | muda o tamanho de todas as redes do treino; diminuir recomeça a geração |
 | `randomGenome()` | genoma aleatório |
 | `LEGACY_SHAPES`, `genomeLength(inputs, outputs)` | formatos antigos de rede (8→5 e 9→6) |
 | `upgradeGenome(genome)` | converte genoma antigo: peso 0 nas entradas novas, saídas novas aleatórias |
@@ -1850,10 +2005,11 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 | Nome | Descrição |
 |---|---|
-| `training` | objeto com todo o estado do treino: `active`, `speed`, `turbo`, `generation`, `population`, `levelRecords`, `index`, `level`, `levelScores`, `levelEnds`, `episodeFrames`, `startLives`, `bestEver`, `history`, `lastScores`, `generationMs`, `actionFrames`, `actionTotal` |
+| `training` | objeto com todo o estado do treino: `active`, `speed`, `turbo`, `generation`, `population`, `levelRecords`, `index`, `level`, `levelScores`, `levelEnds`, `levelBoss`, `bossMaxHp`, `bossHp`, `episodeFrames`, `startLives`, `bestEver`, `history`, `lastScores`, `generationMs`, `actionFrames`, `actionTotal` |
 | `MAX_LEVEL_SECONDS` (150) | limite de cada fase em tempo de jogo |
 | `SURVIVAL_POINTS_PER_SECOND` (0,1) | desempate por tempo vivo |
-| `FITNESS_VERSION` (3) | versão da fórmula da nota |
+| `FITNESS_VERSION` (4) | versão da fórmula da nota |
+| `BOSS_REACHED` (0,3), `BOSS_DAMAGE_MAX` (0,65), `POINTS_SHARE` (0,5) | pesos do progresso contra o chefe e da parte de pontos na nota |
 | `MIN_LEVEL_RECORD` (10) | piso do recorde de cada fase |
 | `LEVEL_COUNT` (8), `startLevel` | número de fases; fase inicial para jogar/assistir |
 | `STORAGE_KEY`, `TRAINING_API`, `savedTo` | `localStorage`, endereço da API e onde foi o último salvamento |
@@ -1886,7 +2042,9 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 |---|---|
 | `levelFitness()` | pontos da fase atual + desempate por tempo vivo |
 | `levelReference(level, records)` | recorde da fase com o piso de 10 |
-| `balancedFitness(levelScores, records)` | `Σ min(1, pontos ÷ recorde)` |
+| `trackBoss()` | guarda a vida do chefe da fase (`bossMaxHp`, `bossHp`) a cada frame |
+| `bossProgress()` | progresso contra o chefe, de 0 a 1 |
+| `balancedFitness(levelScores, records, levelBoss)` | `Σ ½ min(1, pontos ÷ recorde) + ½ progresso`; sem `levelBoss` (treino antigo), só a parte de pontos |
 | `currentFitness()` | prévia da nota da nave em jogo |
 
 ### Ciclo
@@ -1926,12 +2084,12 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 | Nome | Descrição |
 |---|---|
-| `INPUT_LABELS` | nomes das 11 entradas (usados na telemetria) |
+| `INPUT_LABELS` | nomes das 19 entradas (usados na telemetria) |
 | `SPECIAL_NAMES`, `KEY_NAMES` | nomes em português |
 | `PANEL_REFRESH_MS` (100) | intervalo de atualização |
 | `createPanel()` | monta o painel dentro de `#app-body` e liga os controles |
 | `bindSlider(id, getValue, setValue, format)` | liga um slider a uma variável |
-| `countWeights(net)` | número de pesos da rede (114) |
+| `countWeights(net)` | número de pesos da rede (162) |
 | `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões |
 
 ## `ai-telemetry.js` — telemetria
@@ -1972,13 +2130,35 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `PORT` (8000), `ROOT`, `DATA_DIR`, `TRAINING_FILE`, `BEST_FILE`, `API_PATH`, `MAX_BODY_BYTES` | configuração |
 | `Server` | `ThreadingHTTPServer` com `allow_reuse_address = False` |
 | `Handler` | serve os arquivos sem cache e responde `GET`/`POST`/`DELETE` em `/api/training` |
+| `ALLOWED_HOSTS`, `ALLOWED_ORIGINS`, `HIDDEN_FOLDERS` | `Host` e `Origin` aceitos; pastas que não são entregues |
+| `Handler.is_trusted(write)` | confere `Host` e, nas escritas, `Origin` e `Content-Type` ([07](07-persistencia.md#segurança-do-servidor)) |
+| `Handler.is_hidden()` | nega caminhos com trecho começando em `.` e `mcp-server/` |
 | `write_json(path, data)` | gravação atômica (`.tmp` + `os.replace`) |
+
+## `mcp-server/server.py` — servidor MCP
+
+| Nome | Descrição |
+|---|---|
+| `PAGE_SCRIPT` | script injetado na página: `mcpStep`, `mcpStart`, `mcpSnapshot`, `mcpPlay` (o tempo só passa quando uma ferramenta pede) |
+| `Game` | abre o navegador (Edge → Chrome → Chromium) com o Playwright, sobe o `server.py` do jogo se a porta estiver livre |
+| `SENSOR_NAMES` | nomes das 19 entradas, na ordem de `getInputs()` |
+| `KEYS`, `MAX_FRAMES` (600) | teclas aceitas e frames máximos por chamada |
+| `HEADED` | `SPACE_IMPACT_HEADED=1`: janela visível e frames em tempo real |
+| `start_game`, `get_state`, `play`, `screenshot` | as 4 ferramentas ([11](11-claude-jogando-mcp.md)) |
+
+## `tools/clone_demos.py` — clonagem de comportamento
+
+| Nome | Descrição |
+|---|---|
+| `EPOCHS` (1500), `RATE` (0,3), `LIMIT` (4), `BALANCE` (8) | passadas, taxa, limite de pesos e peso extra das teclas raras |
+| `forward(x)` | mesma conta do `predict()` do `brain-nn.js`, com o peso de cada tecla |
+| (script) | lê `training-data/claude-demos.json`, treina e grava `training-data/demo-network.json` ([11](11-claude-jogando-mcp.md#aproveitar-a-partida-clonagem-de-comportamento)) |
 
 ## `tools/` — documentação em HTML
 
 | Arquivo | Conteúdo |
 |---|---|
-| `build_docs.py` | junta `docs/README.md`, `docs/01…10-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `<\/script` escapado) |
+| `build_docs.py` | junta `docs/README.md`, `docs/01…12-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `<\/script` escapado) |
 | `docs-template.html` | o modelo da página: estilos, sumário lateral e o script que, no navegador, converte o Markdown com o marked.js, cria os ids dos títulos no estilo do GitHub (prefixados pelo nome do documento), troca links `06-treino.md#…` por âncoras da própria página e desenha os diagramas Mermaid |
 
 ## `.vscode/`
@@ -1989,6 +2169,341 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `launch.json` | "Jogar (Edge)" e "Jogar (Chrome)" com `preLaunchTask` |
 
 </script>
+<script type="text/markdown" data-key="11-claude-jogando-mcp" data-file="11-claude-jogando-mcp.md">
+# 11 — Claude jogando (servidor MCP) e demonstrações
+
+Além da rede neural, o jogo pode ser jogado pelo **Claude**, por meio de um servidor **MCP** (*Model Context
+Protocol*: um jeito padrão de dar ferramentas a uma IA). Isso serviu para três coisas: ver o jogo "pelos olhos" de
+uma IA que raciocina, descobrir falhas nos sensores e testar se partidas dele serviam de exemplo para a rede
+(clonagem de comportamento — [veja abaixo](#aproveitar-a-partida-clonagem-de-comportamento)).
+
+O código fica em `mcp-server/server.py`; o `.mcp.json` da raiz registra o servidor para o Claude Code.
+
+## Como funciona
+
+```mermaid
+flowchart LR
+    C["Claude<br/>(Claude Code)"] -->|"ferramentas MCP<br/>(stdio)"| M["mcp-server/server.py<br/>FastMCP"]
+    M -->|Playwright| B["Edge / Chrome<br/>sem janela"]
+    B -->|abre| S["server.py (porta 8000)<br/>serve o jogo"]
+    B --- G["game.js + ai.js<br/>+ script injetado"]
+```
+
+1. O Claude Code lê o `.mcp.json` e sobe `mcp-server/server.py` (comunicação por entrada/saída padrão).
+2. Na **primeira ferramenta usada**, o servidor MCP abre um navegador com o **Playwright** — Edge, depois Chrome, e só
+   se nenhum existir o Chromium do próprio Playwright — e carrega `http://localhost:8000`. Se a porta 8000 estiver
+   livre, ele mesmo sobe o `server.py` do jogo.
+3. Ele injeta na página um script (`PAGE_SCRIPT`) que controla o tempo do jogo.
+4. Cada ferramenta chama funções desse script com `page.evaluate`.
+
+### O tempo só passa quando o Claude pede
+
+O jogo normal avança sozinho, em tempo real. Aqui isso é desligado:
+
+- `window.animate` vira um laço vazio (o `animate()` do `game.js` não avança mais o jogo);
+- o modo da IA vai para `"human"` (o `aiLoop()` não faz nada);
+- `mcpStep(action)` roda **um frame**, exatamente como o treino acelerado faz: `aiFrame++`, `act(action)`, limpa os
+  canvas, `currentLevel.update(FRAME_MS)`, e confere se acabou o jogo.
+
+Entre uma chamada e outra, o jogo fica **parado**. `play` com 60 frames equivale a 1 segundo de jogo.
+
+## As ferramentas
+
+| Ferramenta | O que faz |
+|---|---|
+| `start_game(level)` | Partida nova na fase 1 a 8: 4 vidas, 0 pontos, 3 mísseis. A nave começa parada |
+| `get_state()` | Estado atual, sem avançar o tempo |
+| `play(keys, frames, stop_on_event)` | Segura as teclas por `frames` frames (1 a 600) e devolve o estado no fim |
+| `screenshot()` | Imagem PNG do jogo neste instante |
+
+`keys` aceita qualquer combinação de `up`, `down`, `left`, `right`, `fire`, `special`; lista vazia solta tudo. O
+intervalo entre tiros (200 ms) e entre especiais (1 s) vale para o Claude como vale para a rede, porque fica no
+`act()` ([03](03-sensores-e-acoes.md#por-que-os-intervalos-cooldowns)).
+
+Com `stop_on_event` ligado, `play` para na hora se **perder uma vida**, **mudar de fase** ou o **jogo acabar**, e o
+campo `stoppedBy` diz o motivo (`lost_life`, `new_level`, `game_over`, `game_won`).
+
+### O que `play` e `get_state` devolvem
+
+Coordenadas em pixels numa tela de 840 × 480; `x` e `y` são o canto superior esquerdo.
+
+| Campo | Significado |
+|---|---|
+| `level`, `lives`, `score`, `special`, `specialType` | fase, vidas, pontos, munição especial e o tipo (`missile`, `laser`, `wall`) |
+| `gameOver`, `levelComplete`, `frame` | fim de jogo, fase vencida, contador de frames |
+| `player` | `x`, `y`, `width`, `height` e a hitbox: `hitboxTop`, `hitboxHeight` |
+| `enemies` | inimigos e chefes à frente da nave, do mais próximo ao mais longe; itens coletáveis vêm aqui com `isPowerUp: true` |
+| `enemyProjectiles` | tiros inimigos (`vx`, `vy`, `homing`) |
+| `terrain` | chão, teto e pilares; encostar mata, mesmo com escudo |
+| `sensors` | as 19 entradas da rede, com nome, para comparar com o que a IA enxerga |
+
+`play` ainda devolve `ran` (frames rodados), `scoreGained` e `livesLost`.
+
+## Modo janela (assistir)
+
+Com `SPACE_IMPACT_HEADED=1` no `.mcp.json`, o servidor abre uma janela do Edge e espera o redesenho entre os frames
+(`paced`), então o jogo passa a 60 quadros por segundo. Com `0` (o padrão do projeto) tudo roda o mais rápido possível,
+sem janela.
+
+## Instalação
+
+```bash
+python -m venv mcp-server/.venv
+mcp-server/.venv/Scripts/python.exe -m pip install -r mcp-server/requirements.txt
+```
+
+O `.mcp.json` usa o caminho do Windows (`.venv/Scripts/python.exe`); em Linux/macOS é `.venv/bin/python`. Ao abrir o
+projeto no Claude Code, é preciso **aprovar** o servidor `space-impact`. A pasta `.venv` não vai para o Git.
+
+## O que se aprendeu com a partida
+
+Um subagente do Claude jogou uma partida inteira pelo MCP, sem reiniciar. Segundo o relatório dele (não conferi cada
+número por fora): passou da fase 1 sem perder vida, passou pelos chefes das fases 1 a 7 e levou *game over* no chefe
+final, da fase 8, com **8.790 pontos**. O que ele relatou e o que mudou no projeto por causa disso:
+
+| Observação do agente | O que descobrimos | O que mudou |
+|---|---|---|
+| "Colidir com inimigos grandes e lentos dá vida extra e mísseis" | eram **itens coletáveis** (`PowerUp`), que o jogo guarda na lista de inimigos; a rede os via como ameaça | `isPowerUp` no estado e sensores próprios de item ([03](03-sensores-e-acoes.md)) |
+| Desviava olhando a altura de cada tiro e onde ele ia passar | "o tiro mais próximo" não diz se vai **acertar** | sensores de **perigo iminente** ([03](03-sensores-e-acoes.md#describedanger--perigo-iminente-entradas-1518)) |
+| "A hitbox real parece maior que a listada" | o servidor MCP **somava o `y` duas vezes** em `hitboxTop` (nave em y = 220 mostrava hitbox em 450) | corrigido em `mcp-server/server.py` |
+| Só se passa de fase matando o chefe | `levelComplete` só vira `true` com o chefe morto; os pontos não distinguem "morreu antes" de "chegou nele" | nota versão 4 ([06](06-treino.md#o-progresso-contra-o-chefe)) |
+| Ficar na coluna da esquerda e mexer só na vertical, atirando sempre | a melhor tática simples nas fases 1 a 7 | (só registro) |
+| O chefe final não pareceu tomar dano de longe | não investigado | (em aberto) |
+
+## Aproveitar a partida: clonagem de comportamento
+
+**Ideia:** *behavior cloning* (ou aprendizado por imitação) — ensinar a rede a repetir o que o Claude fez, como se as
+jogadas dele fossem as respostas certas. Seria um atalho ao evoluir do zero.
+
+### Os dados
+
+`training-data/claude-demos.json` tem **592 demonstrações**, uma por chamada de `play`:
+
+```jsonc
+{ "sensors": [11 números], "keys": ["fire", "up"], "frames": 60, "level": 2 }
+```
+
+- `sensors`: as entradas da rede **no início** do trecho (é o estado devolvido pela chamada anterior);
+- `keys`: as teclas que o Claude segurou durante o trecho; `frames`: por quanto tempo.
+
+São 33 mil frames (~9 minutos de jogo). Os sensores são os **11 antigos**: os dados são anteriores aos sensores novos.
+A tecla `fire` aparece em 587 dos 592 trechos; cima e baixo, em cerca de 50 cada.
+
+### O treino
+
+`tools/clone_demos.py` (Python puro, sem bibliotecas) treina uma rede 11 → 6 → 6 com o mesmo cálculo do
+`brain-nn.js` (sigmoide, mais o peso fixo de cada tecla), por descida de gradiente: `erro = saída − alvo` (entropia
+cruzada com sigmoide), 1.500 passadas, taxa 0,3 e pesos presos em ±4. Teclas raras pesam 8 vezes mais quando
+apertadas (`BALANCE`), senão a rede aprende só a atirar. O resultado vai para `training-data/demo-network.json`.
+
+| Tecla | Acerto | Leitura |
+|---|---|---|
+| fire | 99% | apertada em quase todos os trechos |
+| cima | 56% | piorou: a rede quase não aprendeu |
+| baixo | 90% | só dá para dizer que não piorou |
+| esquerda | 14% | piorou |
+| direita | 91% | só dá para dizer que não piorou |
+| special | 98% | só dá para dizer que não piorou |
+
+### Por que não funcionou
+
+1. **Faltava informação nas entradas.** O Claude decidia onde se mover pela posição exata de cada tiro e inimigo; as
+   11 entradas mostravam só o mais próximo. Isso motivou os sensores de perigo e de item.
+2. **Poucos dados e muito desequilíbrio.** 592 exemplos, quase todos "só atirar".
+3. **Estado só no início do trecho.** Uma tecla segurada por 60 frames vira um único exemplo, mesmo que a situação
+   tenha mudado no meio.
+4. **Imitar não é vencer.** O Claude também morreu (7 vezes, segundo o relatório): copiar as jogadas copia os erros.
+
+Lição registrada no [diário de decisões](09-diario-de-decisoes.md): dados de demonstração só ajudam se as entradas
+mostram o que o demonstrador via.
+
+### Como reaproveitar
+
+- Para gerar demonstrações novas já com as 19 entradas, grave `sensors` completos a cada frame (ou a cada poucos
+  frames) no servidor MCP; hoje ele não grava nada.
+- O `demo-network.json` tem 11 entradas e 114 números: `upgradeGenome()` o converte para o formato atual (entradas
+  novas com peso 0), caso queira injetá-lo na população.
+- Nada disso está ligado ao treino: a evolução continua sem usar as demonstrações.
+
+## Segurança
+
+O servidor MCP só abre `localhost:8000` e valida as entradas das ferramentas (teclas conhecidas, `frames` entre 1 e
+600, fase entre 1 e 8). Ele não recebe segredos nem acessa a rede além do jogo local. O `server.py` do jogo tem
+proteções próprias ([07](07-persistencia.md#segurança-do-servidor)); entre elas, não entrega a pasta `mcp-server/`.
+
+</script>
+<script type="text/markdown" data-key="12-receitas-e-perguntas" data-file="12-receitas-e-perguntas.md">
+# 12 — Receitas, parâmetros e perguntas frequentes
+
+Este documento é para **consulta**: "como eu mudo X?", "o que acontece se eu mexer em Y?", "por que a IA faz Z?". Cada
+resposta aponta para o documento que explica o assunto por inteiro.
+
+## Receitas
+
+### Comparar os três jeitos de jogar
+
+No painel, em **Quem controla**: **Você** (teclado), **Regras** (`brain-rules.js`, `if`s escritos à mão) e **Rede**
+(`brain-nn.js`). Use as **Regras** como régua: se a rede treinada não ganha delas, o treino ainda não achou nada de
+útil. Ver [01](01-visao-geral.md#quem-controla-a-nave).
+
+### Treinar e acompanhar
+
+1. **Iniciar treino** e ligar o **Turbo**. Manter a aba visível ([02](02-como-rodar.md)).
+2. Olhar a **média** da nota (a melhor oscila por sorte) e o gráfico **o que matou**: se 30 de 30 morrem no terreno de
+   uma fase, a rede não está vendo ou não está aprendendo aquela fase ([08](08-painel-e-telemetria.md)).
+3. **Pausar treino** e **Assistir a melhor**.
+
+O treino é salvo no fim de cada geração; fechar a página não perde nada ([07](07-persistencia.md)).
+
+### Guardar uma cópia antes de mudar algo grande
+
+Copie `training-data/training.json` e `training-data/best-network.json` para nomes como
+`training-antes-<mudança>.json`. Foi o que se fez antes de cada mudança de formato ([07](07-persistencia.md#backups)).
+Para voltar, copie de volta sobre o nome original **com o servidor parado ou a página fechada** (senão a geração em
+andamento grava por cima).
+
+### Zerar o treino
+
+**Zerar treino** no painel apaga os dois arquivos. Faça backup antes.
+
+### Mudar o número de neurônios escondidos
+
+Slider **Neurônios escondidos** (2 a 32). Aumentar não muda como as naves jogam; diminuir corta neurônios e recomeça a
+geração ([04](04-rede-neural.md#número-de-neurônios-escondidos-configurável)). É salvo no treino.
+
+### Adicionar um sensor novo
+
+O formato da rede muda, então siga a ordem:
+
+1. Se o jogo tem a informação mas o `getState()` não a expõe, acrescente o campo em `ai.js`
+   ([03](03-sensores-e-acoes.md#camada-1--getstate-aijs)).
+2. Escreva a função que calcula os números em `brain-nn.js`, **normalizados entre 0 e 1**, e meça os extremos jogando
+   (o método está em [03](03-sensores-e-acoes.md#normalização)).
+3. Acrescente os valores **no fim** da lista de `getInputs()` e aumente `INPUT_COUNT`.
+4. Em `evolution.js`, acrescente em `LEGACY_SHAPES` o formato **antigo** (`{ inputs: <antigo>, outputs: 6 }`): é ele
+   que permite carregar treinos salvos com peso 0 nas entradas novas ([04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)).
+5. Nomes: `INPUT_LABELS` em `ai-panel.js` (rótulos da rede ao vivo) e `SENSOR_NAMES` em `mcp-server/server.py`.
+6. Faça backup do treino, recarregue a página e confira: o número de pesos do botão "Nova rede aleatória" e se
+   `population[0].genome.length` bate com o esperado.
+7. Atualize a documentação ([03](03-sensores-e-acoes.md), [04](04-rede-neural.md), [10](10-referencia-do-codigo.md)).
+
+Por que no fim: o genoma é uma lista; entradas novas no meio deslocariam todos os pesos seguintes e o treino salvo
+viraria lixo.
+
+### Mudar a nota (fitness)
+
+1. Edite `balancedFitness()` / `levelFitness()` em `training.js`.
+2. **Aumente `FITNESS_VERSION`.** As notas de versões diferentes não se comparam: ao carregar, o treino mantém os
+   pesos, recria os recordes e zera o histórico ([06](06-treino.md#histórico-das-versões-da-nota)).
+3. Se a nota depender de um dado novo por nave (como `levelBoss`), guarde-o no indivíduo, no `bestEver` e no
+   salvamento, e trate o caso "treino antigo sem esse dado".
+4. Registre o motivo no [diário](09-diario-de-decisoes.md).
+
+### Mudar a população ou a evolução
+
+`POPULATION_SIZE`, `ELITE_COUNT`, `TOURNAMENT_SIZE` em `evolution.js`; taxa e força da mutação nos sliders do painel
+([05](05-neuroevolucao.md#os-números-do-algoritmo)). Uma população salva com outro tamanho é refeita na geração
+seguinte.
+
+### Deixar o Claude jogar
+
+Aprovar o servidor `space-impact` no Claude Code e pedir para ele jogar ([11](11-claude-jogando-mcp.md)).
+
+### Atualizar esta documentação
+
+Edite os `.md` de `docs/` e rode `python tools/build_docs.py`. Nunca edite `docs/documentacao.html` à mão.
+
+## Parâmetros: o que cada número controla
+
+| Parâmetro | Valor | Onde | Efeito de aumentar |
+|---|---|---|---|
+| `DEFAULT_HIDDEN_COUNT` | 6 (2 a 32 no painel) | `brain-nn.js` | mais capacidade; busca mais lenta |
+| `POPULATION_SIZE` | 30 | `evolution.js` | mais diversidade; geração mais lenta |
+| `ELITE_COUNT` | 2 | `evolution.js` | menos risco de piorar; menos renovação |
+| `TOURNAMENT_SIZE` | 3 | `evolution.js` | pais melhores; menos diversidade |
+| `mutationRate` | 10% (painel) | `evolution.js` | explora mais; estraga mais o que funciona |
+| `mutationStrength` | 0,5 (painel) | `evolution.js` | passos maiores |
+| `WEIGHT_LIMIT` | 4 | `evolution.js` | pesos maiores; risco de saturar |
+| `REVIVE_CHANCE` | 0,3 | `evolution.js` | mais filhos com cima/baixo ressorteados se travados |
+| `MAX_LEVEL_SECONDS` | 150 | `training.js` | fases mais longas por nave |
+| `SURVIVAL_POINTS_PER_SECOND` | 0,1 | `training.js` | mais desempate por tempo vivo |
+| `MIN_LEVEL_RECORD` | 10 | `training.js` | régua mínima mais alta |
+| `POINTS_SHARE` | 0,5 | `training.js` | mais peso nos pontos, menos no chefe |
+| `BOSS_REACHED` / `BOSS_DAMAGE_MAX` | 0,3 / 0,65 | `training.js` | mais prêmio por chegar / por ferir o chefe |
+| `DANGER_HORIZON` | 60 frames | `brain-nn.js` | perigo enxergado de mais longe |
+| `DANGER_MARGIN` | 20 px | `brain-nn.js` | alarme mais cedo (folga maior) |
+| `TERRAIN_LOOKAHEAD` / `TERRAIN_RANGE` | 150 / 150 px | `brain-nn.js` | terreno visto de mais longe |
+| `fireCooldown` | 200 ms (painel) | `ai.js` | tiros mais espaçados |
+| `specialCooldown` | 1000 ms | `ai.js` | especiais mais espaçados |
+| `pressThreshold` | 0,5 (painel) | `brain-nn.js` | teclas mais difíceis de apertar |
+| `actionWeights` | ↑0 ↓0 ←−3 →−3 tiro+2 especial−8 (padrão) | `brain-nn.js` | tecla aperta com mais facilidade |
+| `TURBO_SHARE` / `TURBO_MIN_MS` / `TURBO_MAX_MS` | 0,75 / 12 / 50 | `training.js` | mais frames por segundo; tela menos responsiva |
+| `HEATMAP_GENERATIONS` | 60 | `ai-telemetry.js` | mapa de calor com mais gerações |
+
+## Perguntas frequentes
+
+**Por que a nota cai sem a rede ter piorado?**
+Porque a régua sobe: a nota usa o recorde de cada fase, e quando uma geração bate o recorde, todos passam a ser
+medidos por um recorde mais exigente ([06](06-treino.md#detalhes-que-importam)). Também há ruído: o mesmo cérebro faz
+notas diferentes em partidas diferentes ([05](05-neuroevolucao.md#ruído-na-nota)). Olhe a tendência da média.
+
+**Por que a nave só sobe (ou só desce)?**
+Pesos que crescem demais fazem a saída virar um interruptor travado. Isso já aconteceu com o `down`; há limite de pesos
+(±4) e conserto automático ([05](05-neuroevolucao.md#conserto-de-redes-saturadas--repairgenome),
+[09](09-diario-de-decisoes.md#a-nave-não-descia-saturação-dos-pesos)). O peso de cada tecla também influencia
+([04](04-rede-neural.md#peso-de-cada-tecla-actionweights)).
+
+**Por que a IA atira o tempo todo?**
+Atirar quase nunca atrapalha, e o peso padrão do tiro é +2. O intervalo de 200 ms impede o "tiro infinito" (reward
+hacking) ([03](03-sensores-e-acoes.md#por-que-os-intervalos-cooldowns)).
+
+**Por que a nota de uma fase fica em 0%/"chefe 0%"?**
+A nave morreu antes de o chefe aparecer, ou a fase acabou pelo tempo. O progresso contra o chefe só começa quando ele
+entra na fase ([06](06-treino.md#o-progresso-contra-o-chefe)).
+
+**Por que a "melhor nave" aparece sem nota?**
+Veio de um treino de antes de uma mudança de regra da nota ou de rede, ou perdeu a nota ao diminuir os neurônios. Ela
+ainda pode ser assistida; qualquer nave nova a supera ([06](06-treino.md#detalhes-que-importam)).
+
+**O treino anda mais devagar com a aba em segundo plano. É normal?**
+Sim: o navegador quase congela abas escondidas. Mantenha a aba visível ([02](02-como-rodar.md)).
+
+**Mudei o jogo e o treino salvo parou de funcionar.**
+Se mudou o número de entradas ou saídas, é preciso registrar o formato antigo em `LEGACY_SHAPES` para o treino ser
+convertido ([04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)). Sem isso o genoma não
+é reconhecido.
+
+**O que é uma "fase vencida"?**
+Matar o chefe. Só então `levelComplete` vira `true` e o jogo leva a nave sozinho até a próxima fase.
+
+**Posso treinar sem o `server.py`?**
+Sim, mas o treino fica só no `localStorage` do navegador ([07](07-persistencia.md#onde-fica)).
+
+**Posso expor o servidor na rede?**
+Não. Ele não tem login e confere que quem fala com ele é a própria máquina
+([07](07-persistencia.md#segurança-do-servidor)).
+
+**O Claude consegue jogar melhor que a rede?**
+Numa partida, passou pelos chefes das fases 1 a 7 ([11](11-claude-jogando-mcp.md)). Mas usar as jogadas dele como
+exemplo para a rede não funcionou com as 11 entradas antigas.
+
+## Mapa: onde está cada coisa
+
+| Quero entender… | Arquivo | Documento |
+|---|---|---|
+| o que a IA vê | `ai.js` (`getState`), `brain-nn.js` (`getInputs`) | [03](03-sensores-e-acoes.md) |
+| como ela decide | `brain-nn.js` (`predict`, `nnDecide`) | [04](04-rede-neural.md) |
+| como ela aperta teclas | `ai.js` (`act`) | [03](03-sensores-e-acoes.md#camada-3--ações-e-actaction-aijs) |
+| como as redes evoluem | `evolution.js` | [05](05-neuroevolucao.md) |
+| como a nota é calculada | `training.js` | [06](06-treino.md) |
+| como o treino é salvo | `training.js`, `server.py` | [07](07-persistencia.md) |
+| o que cada gráfico mostra | `ai-telemetry.js` | [08](08-painel-e-telemetria.md) |
+| por que cada decisão foi tomada | — | [09](09-diario-de-decisoes.md) |
+| uma função específica | todos | [10](10-referencia-do-codigo.md) |
+| o Claude jogando | `mcp-server/server.py` | [11](11-claude-jogando-mcp.md) |
+| um termo | — | [Glossário](glossario.md) |
+
+</script>
 <script type="text/markdown" data-key="glossario" data-file="glossario.md">
 # Glossário
 
@@ -1996,9 +2511,9 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 |---|---|
 | **Agente** | programa que observa o ambiente, decide e age, num ciclo. Aqui: `getState` → cérebro → `act`, a cada frame |
 | **Ambiente** | o jogo (`game.js`) |
-| **Sensor / observação** | o que o agente lê do ambiente: `getState()` e as 11 entradas de `getInputs()` |
+| **Sensor / observação** | o que o agente lê do ambiente: `getState()` e as 19 entradas de `getInputs()` |
 | **Atuador / ação** | o que o agente faz: as 6 teclas aplicadas por `act()` |
-| **Espaço de observação** | o conjunto de todas as entradas possíveis (11 números entre 0 e 1) |
+| **Espaço de observação** | o conjunto de todas as entradas possíveis (19 números entre 0 e 1) |
 | **Espaço de ação** | o conjunto de ações possíveis (6 teclas, cada uma apertada ou não) |
 | **Política** | a regra que transforma observação em ação — aqui, a rede neural (ou as regras) |
 | **Agente reativo** | decide só pelo que vê agora, sem memória do passado. Os dois cérebros do projeto são reativos |
@@ -2014,11 +2529,11 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | **Neurônio travado** | neurônio que não muda de estado para nenhuma entrada possível (`isStuck`) |
 | **Limite para apertar** | valor da saída acima do qual a tecla é apertada (0,5) |
 | **Peso da tecla** | valor fixo somado a uma saída antes da sigmoide (`actionWeights`) |
-| **Genoma** | a rede achatada numa lista de 114 números |
+| **Genoma** | a rede achatada numa lista de 162 números |
 | **Indivíduo** | uma nave = um genoma |
 | **População** | as 30 naves de uma geração |
 | **Geração** | uma rodada em que todas as naves jogam e a evolução cria a próxima população |
-| **Fitness / nota** | quão bem uma nave jogou; aqui, `Σ pontos ÷ recorde` nas 8 fases (0 a 8) |
+| **Fitness / nota** | quão bem uma nave jogou; aqui, a soma nas 8 fases de ½ `pontos ÷ recorde` + ½ progresso contra o chefe (0 a 8) |
 | **Recorde da fase** | maior pontuação já vista numa fase; é a régua da nota |
 | **Episódio** | uma fase jogada por uma nave, do início até perder a 1ª vida, matar o chefe ou 150 s |
 | **Elitismo** | as melhores passam intactas para a próxima geração |
@@ -2034,6 +2549,19 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | **Turbo** | rodar muitos frames do jogo por quadro da tela, sem desenhar os extras |
 | **Frame** | um passo da simulação do jogo (1/60 de segundo de jogo) |
 | **Hitbox** | o retângulo que realmente colide (menor que o desenho) |
+| **Item coletável (`PowerUp`)** | vida, míssil, laser ou parede que o jogo lança na tela; não machuca, e fica na mesma lista dos inimigos (`isPowerUp`) |
+| **Perigo iminente** | sensor que projeta o movimento de tiros e inimigos e diz se vão acertar a nave em até 1 s e de que lado desviar |
+| **Tempo até o impacto** | `distância ÷ velocidade de aproximação`, em frames; base do sensor de perigo |
+| **Progresso contra o chefe** | de 0 a 1: chegar nele vale 0,3, tirar vida até 0,95, matá-lo 1; metade da nota de cada fase |
+| **Número de neurônios escondidos** | tamanho da camada escondida, ajustável no painel (2 a 32); o genoma muda de tamanho junto |
+| **MCP (Model Context Protocol)** | padrão para dar ferramentas a uma IA; aqui, o Claude joga por `start_game`, `get_state`, `play` e `screenshot` |
+| **Playwright** | biblioteca que controla um navegador por código; o servidor MCP a usa para abrir o jogo |
+| **Headless** | navegador sem janela |
+| **Subagente** | outra instância do Claude, chamada para uma tarefa (aqui, jogar uma partida) |
+| **Clonagem de comportamento** | treinar a rede para repetir as jogadas de um demonstrador, como se fossem as respostas certas |
+| **Demonstração** | um exemplo `(entradas → teclas)` gravado de uma partida do Claude |
+| **Origin / Host** | cabeçalhos HTTP que dizem de que site veio um pedido e a que endereço ele foi; o `server.py` os confere |
+| **DNS rebinding** | ataque em que um site malicioso faz o nome dele apontar para `localhost`, para falar com servidores locais |
 | **Telemetria** | dados coletados durante o treino e mostrados em gráficos |
 | **Mapa de calor** | grade colorida: linha = fase, coluna = geração, cor = pontuação |
 

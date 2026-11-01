@@ -66,6 +66,11 @@ O servidor **continua rodando** depois de fechar o navegador. Para parar: `Ctrl+
 Mantenha a aba **visível** enquanto treina: navegadores quase congelam abas escondidas (`requestAnimationFrame`
 desacelera para ~1 quadro por segundo), e o treino cai junto.
 
+## Opcional: deixar o Claude jogar (MCP)
+
+Precisa de Python 3 com um ambiente virtual e do Edge ou Chrome. A instalação e o uso estão em
+[11 — Claude jogando](11-claude-jogando-mcp.md#instalação). O treino e o jogo normal **não** dependem disso.
+
 ## Atalhos de teclado do jogo
 
 | Tecla | Ação |

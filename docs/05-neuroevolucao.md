@@ -14,7 +14,7 @@ A analogia biológica:
 | Biologia | Aqui |
 |---|---|
 | Indivíduo | uma nave (uma rede neural) |
-| DNA | o genoma: a lista de 114 pesos |
+| DNA | o genoma: a lista de 162 pesos |
 | Aptidão (*fitness*) | a nota da nave nas 8 fases |
 | Seleção natural | torneio: as de nota maior têm mais filhos |
 | Reprodução sexuada | cruzamento: o filho mistura os pesos de dois pais |
@@ -61,7 +61,7 @@ melhores faria a população inteira virar cópia de uma só muito rápido.)
 
 ### Cruzamento uniforme — `crossover()`
 
-Para cada um dos 114 pesos, joga uma moeda: o filho herda o peso do pai A ou do pai B.
+Para cada um dos 162 pesos, joga uma moeda: o filho herda o peso do pai A ou do pai B.
 
 ```js
 genomeA.map((gene, i) => (Math.random() < 0.5 ? gene : genomeB[i]));
@@ -119,9 +119,10 @@ a saída `down` voltou a existir. O conserto roda **uma vez**: depois disso o ar
 
 | Função | O que faz |
 |---|---|
-| `networkToGenome(net)` / `genomeToNetwork(genome)` | rede ↔ lista de 114 números |
+| `networkToGenome(net)` / `genomeToNetwork(genome, hiddenCount)` | rede ↔ lista de números (162 com 6 neurônios) |
+| `resizeGenome(genome, from, to)` | muda o número de neurônios escondidos (mais: peso 0 nas saídas; menos: corta os últimos) |
 | `randomGenome()` | genoma de uma rede nova aleatória |
 | `createPopulation()` | 30 genomas aleatórios, nota 0 |
-| `upgradeGenome(genome)` | converte genomas de 89 ou 102 números para o formato atual (ver [04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
+| `upgradeGenome(genome)` | converte genomas de 89, 102 ou 114 números para o formato atual (ver [04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
 | `genomeLength(inputs, outputs)` | tamanho de genoma para um formato de rede |
 | `clampWeight(value)` | prende um peso entre −4 e +4 |

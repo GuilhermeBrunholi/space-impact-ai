@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "space-impact": {
+      "command": "mcp-server/.venv/Scripts/python.exe",
+      "args": ["mcp-server/server.py"],
+      "env": { "SPACE_IMPACT_HEADED": "0" }
+    }
+  }
+}

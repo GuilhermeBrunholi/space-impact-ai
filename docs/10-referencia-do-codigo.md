@@ -59,12 +59,16 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `PLAY_TOP` (50), `PLAY_LEFT` (0) | limites da área de jogo |
 | `MAX_SHOT_WIDTH` (50), `MAX_ENEMY_WIDTH` (380) | maiores larguras de tiro e inimigo, para a distância mínima |
 | `TERRAIN_LOOKAHEAD` (150), `TERRAIN_RANGE` (150) | alcance e escala dos sensores de terreno |
-| `INPUT_COUNT` (11) | número de entradas |
+| `DANGER_HORIZON` (60), `DANGER_MARGIN` (20), `MAX_POWERUP_WIDTH` (80) | horizonte (frames) e folga vertical (px) do perigo iminente; maior largura de item |
+| `INPUT_COUNT` (19) | número de entradas |
 | `normalize(value, min, max)` | normalização min-max presa entre 0 e 1 |
 | `describeNearest(objects, player, maxObjectWidth)` | `[existe?, distância, altura relativa]` do objeto mais próximo à frente |
 | `describeTerrain(terrain, player)` | `[espaço acima, espaço abaixo]` |
-| `getInputs(state)` | as 11 entradas ([03](03-sensores-e-acoes.md#camada-2--getinputsstate-brain-nnjs)) |
-| `HIDDEN_COUNT` (6), `ACTION_KEYS`, `OUTPUT_COUNT` (6) | formato da rede |
+| `describeDanger(objects, player)` | `[urgência, altura]` do objeto que vai acertar a nave primeiro ([03](03-sensores-e-acoes.md#describedanger--perigo-iminente-entradas-1518)) |
+| `describeCollectible(powerups, player)` | `[existe?, distância, altura, é vida?]` do item mais próximo |
+| `nearestAhead(objects, player)` | o objeto mais próximo à frente da nave, ou `null` |
+| `getInputs(state)` | as 19 entradas ([03](03-sensores-e-acoes.md#camada-2--getinputsstate-brain-nnjs)) |
+| `HIDDEN_COUNT` (variável, padrão `DEFAULT_HIDDEN_COUNT` = 6; de `MIN_HIDDEN_COUNT` 2 a `MAX_HIDDEN_COUNT` 32), `ACTION_KEYS`, `OUTPUT_COUNT` (6) | formato da rede |
 | `pressThreshold` | limite para apertar (0,5; painel) |
 | `actionWeights` | peso fixo de cada tecla (painel; salvo com o treino) |
 | `neuron(inputs, weights, bias)` | soma ponderada + bias |
@@ -83,7 +87,9 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `POPULATION_SIZE` (30), `ELITE_COUNT` (2), `TOURNAMENT_SIZE` (3) | parâmetros fixos |
 | `mutationRate` (0,1), `mutationStrength` (0,5) | parâmetros do painel |
 | `WEIGHT_LIMIT` (4) | limite absoluto de cada peso |
-| `networkToGenome(net)` / `genomeToNetwork(genome)` | rede ↔ lista de 114 números |
+| `networkToGenome(net)` / `genomeToNetwork(genome, hiddenCount)` | rede ↔ lista de números (162 com 6 neurônios) |
+| `resizeGenome(genome, from, to)` | muda o número de neurônios escondidos |
+| `setHiddenCount(count)` (training.js) | muda o tamanho de todas as redes do treino; diminuir recomeça a geração |
 | `randomGenome()` | genoma aleatório |
 | `LEGACY_SHAPES`, `genomeLength(inputs, outputs)` | formatos antigos de rede (8→5 e 9→6) |
 | `upgradeGenome(genome)` | converte genoma antigo: peso 0 nas entradas novas, saídas novas aleatórias |
@@ -104,10 +110,11 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 | Nome | Descrição |
 |---|---|
-| `training` | objeto com todo o estado do treino: `active`, `speed`, `turbo`, `generation`, `population`, `levelRecords`, `index`, `level`, `levelScores`, `levelEnds`, `episodeFrames`, `startLives`, `bestEver`, `history`, `lastScores`, `generationMs`, `actionFrames`, `actionTotal` |
+| `training` | objeto com todo o estado do treino: `active`, `speed`, `turbo`, `generation`, `population`, `levelRecords`, `index`, `level`, `levelScores`, `levelEnds`, `levelBoss`, `bossMaxHp`, `bossHp`, `episodeFrames`, `startLives`, `bestEver`, `history`, `lastScores`, `generationMs`, `actionFrames`, `actionTotal` |
 | `MAX_LEVEL_SECONDS` (150) | limite de cada fase em tempo de jogo |
 | `SURVIVAL_POINTS_PER_SECOND` (0,1) | desempate por tempo vivo |
-| `FITNESS_VERSION` (3) | versão da fórmula da nota |
+| `FITNESS_VERSION` (4) | versão da fórmula da nota |
+| `BOSS_REACHED` (0,3), `BOSS_DAMAGE_MAX` (0,65), `POINTS_SHARE` (0,5) | pesos do progresso contra o chefe e da parte de pontos na nota |
 | `MIN_LEVEL_RECORD` (10) | piso do recorde de cada fase |
 | `LEVEL_COUNT` (8), `startLevel` | número de fases; fase inicial para jogar/assistir |
 | `STORAGE_KEY`, `TRAINING_API`, `savedTo` | `localStorage`, endereço da API e onde foi o último salvamento |
@@ -140,7 +147,9 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 |---|---|
 | `levelFitness()` | pontos da fase atual + desempate por tempo vivo |
 | `levelReference(level, records)` | recorde da fase com o piso de 10 |
-| `balancedFitness(levelScores, records)` | `Σ min(1, pontos ÷ recorde)` |
+| `trackBoss()` | guarda a vida do chefe da fase (`bossMaxHp`, `bossHp`) a cada frame |
+| `bossProgress()` | progresso contra o chefe, de 0 a 1 |
+| `balancedFitness(levelScores, records, levelBoss)` | `Σ ½ min(1, pontos ÷ recorde) + ½ progresso`; sem `levelBoss` (treino antigo), só a parte de pontos |
 | `currentFitness()` | prévia da nota da nave em jogo |
 
 ### Ciclo
@@ -180,12 +189,12 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 | Nome | Descrição |
 |---|---|
-| `INPUT_LABELS` | nomes das 11 entradas (usados na telemetria) |
+| `INPUT_LABELS` | nomes das 19 entradas (usados na telemetria) |
 | `SPECIAL_NAMES`, `KEY_NAMES` | nomes em português |
 | `PANEL_REFRESH_MS` (100) | intervalo de atualização |
 | `createPanel()` | monta o painel dentro de `#app-body` e liga os controles |
 | `bindSlider(id, getValue, setValue, format)` | liga um slider a uma variável |
-| `countWeights(net)` | número de pesos da rede (114) |
+| `countWeights(net)` | número de pesos da rede (162) |
 | `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões |
 
 ## `ai-telemetry.js` — telemetria
@@ -226,13 +235,35 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `PORT` (8000), `ROOT`, `DATA_DIR`, `TRAINING_FILE`, `BEST_FILE`, `API_PATH`, `MAX_BODY_BYTES` | configuração |
 | `Server` | `ThreadingHTTPServer` com `allow_reuse_address = False` |
 | `Handler` | serve os arquivos sem cache e responde `GET`/`POST`/`DELETE` em `/api/training` |
+| `ALLOWED_HOSTS`, `ALLOWED_ORIGINS`, `HIDDEN_FOLDERS` | `Host` e `Origin` aceitos; pastas que não são entregues |
+| `Handler.is_trusted(write)` | confere `Host` e, nas escritas, `Origin` e `Content-Type` ([07](07-persistencia.md#segurança-do-servidor)) |
+| `Handler.is_hidden()` | nega caminhos com trecho começando em `.` e `mcp-server/` |
 | `write_json(path, data)` | gravação atômica (`.tmp` + `os.replace`) |
+
+## `mcp-server/server.py` — servidor MCP
+
+| Nome | Descrição |
+|---|---|
+| `PAGE_SCRIPT` | script injetado na página: `mcpStep`, `mcpStart`, `mcpSnapshot`, `mcpPlay` (o tempo só passa quando uma ferramenta pede) |
+| `Game` | abre o navegador (Edge → Chrome → Chromium) com o Playwright, sobe o `server.py` do jogo se a porta estiver livre |
+| `SENSOR_NAMES` | nomes das 19 entradas, na ordem de `getInputs()` |
+| `KEYS`, `MAX_FRAMES` (600) | teclas aceitas e frames máximos por chamada |
+| `HEADED` | `SPACE_IMPACT_HEADED=1`: janela visível e frames em tempo real |
+| `start_game`, `get_state`, `play`, `screenshot` | as 4 ferramentas ([11](11-claude-jogando-mcp.md)) |
+
+## `tools/clone_demos.py` — clonagem de comportamento
+
+| Nome | Descrição |
+|---|---|
+| `EPOCHS` (1500), `RATE` (0,3), `LIMIT` (4), `BALANCE` (8) | passadas, taxa, limite de pesos e peso extra das teclas raras |
+| `forward(x)` | mesma conta do `predict()` do `brain-nn.js`, com o peso de cada tecla |
+| (script) | lê `training-data/claude-demos.json`, treina e grava `training-data/demo-network.json` ([11](11-claude-jogando-mcp.md#aproveitar-a-partida-clonagem-de-comportamento)) |
 
 ## `tools/` — documentação em HTML
 
 | Arquivo | Conteúdo |
 |---|---|
-| `build_docs.py` | junta `docs/README.md`, `docs/01…10-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `</script` escapado) |
+| `build_docs.py` | junta `docs/README.md`, `docs/01…12-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `</script` escapado) |
 | `docs-template.html` | o modelo da página: estilos, sumário lateral e o script que, no navegador, converte o Markdown com o marked.js, cria os ids dos títulos no estilo do GitHub (prefixados pelo nome do documento), troca links `06-treino.md#…` por âncoras da própria página e desenha os diagramas Mermaid |
 
 ## `.vscode/`

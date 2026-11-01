@@ -2,8 +2,9 @@
 
 const MAX_LEVEL_SECONDS = 150;            // fase mais longa que isso é encerrada (tempo do jogo, não do relógio)
 const SURVIVAL_POINTS_PER_SECOND = 0.1;   // só desempate: no começo quase nenhuma nave pontua, e sem isso todas empatam em 0
-// 1 = uma partida só, nota com tempo vivo; 2 = soma dos pontos nas 8 fases; 3 = cada fase vale até 1 (pontos ÷ recorde)
-const FITNESS_VERSION = 3;
+// 1 = uma partida só, nota com tempo vivo; 2 = soma dos pontos nas 8 fases; 3 = cada fase vale até 1 (pontos ÷ recorde);
+// 4 = metade da fase vale pontos ÷ recorde e a outra metade o progresso contra o chefe (chegar nele, tirar vida, matá-lo)
+const FITNESS_VERSION = 4;
 const STORAGE_KEY = "spaceImpactTraining";
 
 const training = {
@@ -17,9 +18,12 @@ const training = {
     level: 1,            // qual fase a nave atual está jogando
     levelScores: [],     // nota da nave atual em cada fase que já terminou
     levelEnds: [],       // como cada fase da nave atual terminou (uma das END_REASONS)
+    levelBoss: [],       // progresso da nave atual contra o chefe em cada fase que já terminou (0 a 1)
+    bossMaxHp: 0,        // vida do chefe da fase atual quando apareceu (0 = ainda não apareceu)
+    bossHp: 0,           // vida que o chefe da fase atual tem agora
     episodeFrames: 0,    // frames que a nave atual já sobreviveu na fase atual
     startLives: 0,
-    bestEver: null,      // { genome, fitness, generation, levelScores }
+    bestEver: null,      // { genome, fitness, generation, levelScores, levelBoss }
     // [{ generation, best, average, levelBest, levelAverage, levelEnds, seconds }]; as gerações antigas só têm as 3 primeiras
     history: [],
     lastScores: [],      // nota de cada nave da última geração completa, da maior para a menor
@@ -132,13 +136,37 @@ function levelReference(level, records) {
     return Math.max(MIN_LEVEL_RECORD, records[level] || 0);
 }
 
-function balancedFitness(levelScores, records) {
-    return levelScores.reduce((sum, score, level) => sum + Math.min(1, score / levelReference(level, records)), 0);
+// Progresso contra o chefe da fase atual, de 0 a 1: 0 = nem chegou nele; 0,3 = chegou vivo; até 0,95 conforme tira vida;
+// 1 = matou. Os pontos sozinhos não distinguem "morreu antes do chefe" de "chegou nele e não conseguiu vencer".
+const BOSS_REACHED = 0.3;
+const BOSS_DAMAGE_MAX = 0.65;
+
+function trackBoss() {
+    const boss = currentLevel.enemies.find(e => e.isBoss);
+    if (!boss) return;
+    if (training.bossMaxHp === 0) training.bossMaxHp = boss.hp;
+    training.bossHp = Math.max(0, boss.hp);
+}
+
+function bossProgress() {
+    if (currentLevel.levelComplete) return 1;
+    if (training.bossMaxHp === 0) return 0;
+    return BOSS_REACHED + BOSS_DAMAGE_MAX * (1 - Math.min(1, training.bossHp / training.bossMaxHp));
+}
+
+// levelBoss ausente = treino de antes desta regra: cada fase vale só os pontos (até 1), como antes
+const POINTS_SHARE = 0.5;
+
+function balancedFitness(levelScores, records, levelBoss) {
+    return levelScores.reduce((sum, score, level) => {
+        const points = Math.min(1, score / levelReference(level, records));
+        return sum + (levelBoss ? POINTS_SHARE * points + (1 - POINTS_SHARE) * (levelBoss[level] || 0) : points);
+    }, 0);
 }
 
 // Nota parcial da nave em jogo, medida pelos recordes de agora (a nota oficial sai no fim da geração)
 function currentFitness() {
-    return balancedFitness([...training.levelScores, levelFitness()], training.levelRecords);
+    return balancedFitness([...training.levelScores, levelFitness()], training.levelRecords, [...training.levelBoss, bossProgress()]);
 }
 
 // A fase acaba ao perder a primeira vida, ao matar o chefe ou ao estourar o tempo
@@ -156,12 +184,15 @@ function loadIndividual() {
     training.level = 1;
     training.levelScores = [];
     training.levelEnds = [];
+    training.levelBoss = [];
     startLevelRun();
 }
 
 function startLevelRun() {
     resetGame(training.level);
     training.episodeFrames = 0;
+    training.bossMaxHp = 0;
+    training.bossHp = 0;
     training.startLives = lives;
     lastDeathCause = null;
 }
@@ -169,6 +200,7 @@ function startLevelRun() {
 function finishLevel() {
     training.levelScores.push(levelFitness());
     training.levelEnds.push(levelEndReason());
+    training.levelBoss.push(bossProgress());
     training.level++;
     if (training.level <= LEVEL_COUNT) {
         startLevelRun();
@@ -179,6 +211,7 @@ function finishLevel() {
     const individual = training.population[training.index];
     individual.levelScores = training.levelScores;
     individual.levelEnds = training.levelEnds;
+    individual.levelBoss = training.levelBoss;
     individual.points = training.levelScores.reduce((a, b) => a + b, 0);
     training.index++;
     if (training.index >= training.population.length) endGeneration();
@@ -193,7 +226,7 @@ function endGeneration() {
     levels.forEach(l => {
         training.levelRecords[l] = Math.max(training.levelRecords[l] || 0, ...population.map(ind => ind.levelScores[l]));
     });
-    population.forEach(ind => { ind.fitness = balancedFitness(ind.levelScores, training.levelRecords); });
+    population.forEach(ind => { ind.fitness = balancedFitness(ind.levelScores, training.levelRecords, ind.levelBoss); });
 
     const scores = population.map(ind => ind.fitness);
     const best = Math.max(...scores);
@@ -201,8 +234,8 @@ function endGeneration() {
     const points = population.map(ind => ind.points);
 
     // a melhor de todas também é medida de novo pelos recordes de agora, para a comparação ser justa
-    if (training.bestEver && training.bestEver.levelScores) {
-        training.bestEver.fitness = balancedFitness(training.bestEver.levelScores, training.levelRecords);
+    if (training.bestEver && training.bestEver.levelScores && training.bestEver.levelBoss) {
+        training.bestEver.fitness = balancedFitness(training.bestEver.levelScores, training.levelRecords, training.bestEver.levelBoss);
     }
     if (training.bestEver === null || best > training.bestEver.fitness) {
         const champion = population.find(ind => ind.fitness === best);
@@ -212,6 +245,7 @@ function endGeneration() {
             points: champion.points,
             generation: training.generation,
             levelScores: champion.levelScores,
+            levelBoss: champion.levelBoss,
         };
     }
     // telemetria: o que aconteceu em cada fase, somando todas as naves da geração
@@ -312,6 +346,7 @@ function runTrainingFrame() {
                 currentLevel.update(FRAME_MS);
             }
             countActions(aiStep());
+            trackBoss();
             training.episodeFrames++;
             countFrame();
             if (levelOver()) {
@@ -347,6 +382,36 @@ function watchBest() {
     resetGame();
 }
 
+// Muda o número de neurônios escondidos (painel). Aumentar não muda como as naves jogam; diminuir corta neurônios,
+// então a geração recomeça e a melhor nave perde a nota (a rede dela não é mais a que foi avaliada).
+function setHiddenCount(count) {
+    count = Math.max(MIN_HIDDEN_COUNT, Math.min(MAX_HIDDEN_COUNT, Math.round(count)));
+    const from = HIDDEN_COUNT;
+    if (count === from) return;
+
+    const resize = genome => resizeGenome(genome, from, count);
+    const currentGenome = resize(networkToGenome(network));
+    if (training.population) training.population.forEach(ind => { ind.genome = resize(ind.genome); });
+    if (training.bestEver) {
+        training.bestEver.genome = resize(training.bestEver.genome);
+        if (count < from) training.bestEver.fitness = -Infinity;
+    }
+    HIDDEN_COUNT = count;
+    network = genomeToNetwork(currentGenome);
+
+    if (training.population && count < from) {
+        training.index = 0;
+        training.generationMs = 0;
+        training.actionFrames = {};
+        training.actionTotal = 0;
+        if (training.active) loadIndividual();
+    }
+    else if (training.active && training.population) {
+        network = genomeToNetwork(training.population[training.index].genome);
+    }
+    if (training.population) saveTraining();
+}
+
 function resetTraining() {
     stopTraining();
     training.generation = 1;
@@ -355,6 +420,7 @@ function resetTraining() {
     training.level = 1;
     training.levelScores = [];
     training.levelEnds = [];
+    training.levelBoss = [];
     training.bestEver = null;
     training.levelRecords = [];
     training.history = [];
@@ -380,6 +446,7 @@ function trainingSnapshot() {
     return {
         fitnessVersion: FITNESS_VERSION,
         weightLimit: WEIGHT_LIMIT,
+        hiddenCount: HIDDEN_COUNT,
         actionWeights: actionWeights,
         generation: training.generation,
         genomes: training.population.map(ind => ind.genome),
@@ -391,6 +458,7 @@ function trainingSnapshot() {
 }
 
 function applySnapshot(saved) {
+    HIDDEN_COUNT = saved.hiddenCount || DEFAULT_HIDDEN_COUNT;   // treinos antigos não guardavam: eram sempre 6
     training.generation = saved.generation;
     training.population = saved.genomes.map(genome => ({ genome: upgradeGenome(genome), fitness: 0 }));
 
@@ -418,9 +486,9 @@ function applySnapshot(saved) {
 
         // a melhor nave continua para assistir; se a nota dela por fase é conhecida, ela ganha a nota nova
         if (training.bestEver) {
-            training.bestEver.fitness = training.bestEver.levelScores
-                ? balancedFitness(training.bestEver.levelScores, training.levelRecords)
-                : -Infinity;
+            training.bestEver.fitness = training.bestEver.levelScores && training.bestEver.levelBoss
+                ? balancedFitness(training.bestEver.levelScores, training.levelRecords, training.bestEver.levelBoss)
+                : -Infinity;   // sem o progresso contra o chefe, a nota não se compara com a nova
         }
         training.history = [];
         training.lastScores = [];

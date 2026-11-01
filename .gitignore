@@ -10,6 +10,7 @@ training-data/*.tmp
 # ── Python ──
 __pycache__/
 *.py[cod]
+mcp-server/.venv/
 
 # ── Editores ──
 # do VS Code, só as configurações de rodar o jogo são compartilhadas

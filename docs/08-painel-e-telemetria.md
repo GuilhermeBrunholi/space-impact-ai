@@ -37,6 +37,7 @@ e para "Assistir a melhor". O treino ignora essa escolha e sempre passa pelas 8 
 | Controle | Variável | Faixa | Efeito |
 |---|---|---|---|
 | Nova rede aleatória | `network` | — | sorteia um cérebro novo (não mexe no treino) |
+| Neurônios escondidos | `HIDDEN_COUNT` | 2 – 32 | tamanho da camada escondida; vale ao soltar o slider e converte todas as redes do treino ([04](04-rede-neural.md#número-de-neurônios-escondidos-configurável)) |
 | Limite para apertar | `pressThreshold` | 0,1 – 0,9 | saída acima disso = tecla apertada |
 | Peso de cada tecla | `actionWeights` | −10 – +10 | empurrão fixo em cada saída ([04](04-rede-neural.md#peso-de-cada-tecla-actionweights)) |
 | Intervalo entre tiros | `fireCooldown` | 50 – 1000 ms | ritmo máximo de tiro |
@@ -63,7 +64,8 @@ parâmetros valem só para a sessão.
 Abaixo:
 
 - **30 casinhas**, uma por nave: verde = já jogou, amarela = jogando agora.
-- **Pontos da nave atual por fase**: 8 cartões; a cor da **borda de baixo** diz como a fase terminou (mesmas cores
+- **Pontos da nave atual por fase**: 8 cartões, cada um com os pontos e o **progresso contra o chefe** (`chefe 0%`,
+  `chefe 84%`, `chefe ✓` se ele morreu); a cor da **borda de baixo** diz como a fase terminou (mesmas cores
   do gráfico "o que matou"); a fase em andamento fica amarela com a pontuação parcial. Passe o mouse para ver o
   motivo por escrito.
 - **Teclas apertadas nesta geração**: % dos frames em que cada tecla esteve apertada, somando todas as naves
@@ -73,17 +75,19 @@ Abaixo:
 
 O diagrama da rede **atual** (a nave jogando, a melhor sendo assistida, ou a rede aleatória):
 
-- à esquerda, as **11 entradas** com o valor atual de cada uma;
+- à esquerda, as **19 entradas** com o valor atual de cada uma;
 - no meio, os **6 neurônios escondidos**;
 - à direita, as **6 saídas** com o valor (já com o peso da tecla);
 - cada **linha** é um peso: verde = positivo, vermelho = negativo; grossura e opacidade = tamanho do peso;
 - cada **bolinha** acende conforme o valor do neurônio (0 = escura, 1 = clara); saída **amarela** = tecla apertada.
 
+O diagrama tem 440 px de altura para os 19 rótulos caberem sem se sobrepor.
+
 Funciona até no modo `Você`: dá para jogar e ver o que a rede faria.
 
 ### Evolução da nota (0 a 8)
 
-Linha **verde** = melhor nota de cada geração; linha **cinza** = média. A escala vai de 0 até a maior nota do
+Cada fase vale até 1: metade `pontos ÷ recorde`, metade o progresso contra o chefe. Linha **verde** = melhor nota de cada geração; linha **cinza** = média. A escala vai de 0 até a maior nota do
 histórico. Olhe a tendência da **média** — a melhor oscila com o ruído da partida
 (ver [05](05-neuroevolucao.md#ruído-na-nota)). A nota pode cair quando um recorde sobe.
 

@@ -6,6 +6,9 @@ const INPUT_LABELS = [
     "Existe inimigo?", "Dist. inimigo", "Altura inimigo",
     "Tem especial?",
     "Espaço acima", "Espaço abaixo",
+    "Existe item?", "Dist. item", "Altura item", "Item é vida?",
+    "Perigo tiro", "Onde: tiro",
+    "Perigo inimigo", "Onde: inimigo",
 ];
 const SPECIAL_NAMES = { missile: "míssil", laser: "laser", wall: "parede" };
 const KEY_NAMES = { up: "↑ cima", down: "↓ baixo", left: "← esquerda", right: "→ direita", fire: "tiro", special: "especial" };
@@ -63,7 +66,12 @@ function createPanel() {
 
             <section class="ai-section">
                 <h4>REDE E PARÂMETROS</h4>
-                <button type="button" id="ai-new-network">Nova rede aleatória (${countWeights(network)} pesos)</button>
+                <button type="button" id="ai-new-network"></button>
+                <div class="ai-param">
+                    <label for="ai-hidden"><span>Neurônios escondidos</span><span id="ai-hidden-value"></span></label>
+                    <input type="range" id="ai-hidden" min="${MIN_HIDDEN_COUNT}" max="${MAX_HIDDEN_COUNT}" step="1">
+                </div>
+                <p class="ai-note" id="ai-hidden-note"></p>
                 <div class="ai-param">
                     <label for="ai-threshold"><span>Limite para apertar</span><span id="ai-threshold-value"></span></label>
                     <input type="range" id="ai-threshold" min="0.1" max="0.9" step="0.05">
@@ -116,6 +124,26 @@ function createPanel() {
         network = createNetwork();
     });
 
+    // neurônios escondidos: o número vale ao soltar o slider (mudar o tamanho mexe em todas as redes do treino)
+    const hiddenSlider = panel.querySelector("#ai-hidden");
+    const hiddenNote = panel.querySelector("#ai-hidden-note");
+    hiddenSlider.value = HIDDEN_COUNT;
+    document.getElementById("ai-hidden-value").textContent = HIDDEN_COUNT;
+    hiddenSlider.addEventListener("input", () => {
+        document.getElementById("ai-hidden-value").textContent = hiddenSlider.value;
+    });
+    hiddenSlider.addEventListener("change", () => {
+        const count = Number(hiddenSlider.value);
+        if (count < HIDDEN_COUNT && !confirm("Diminuir corta neurônios: as redes podem jogar diferente, a geração recomeça e a melhor nave perde a nota. Continuar?")) {
+            hiddenSlider.value = HIDDEN_COUNT;
+        }
+        else {
+            setHiddenCount(count);
+            hiddenNote.textContent = "Rede com " + HIDDEN_COUNT + " neurônios escondidos. Ao aumentar, as naves jogam igual e a evolução ajusta os novos.";
+        }
+        document.getElementById("ai-hidden-value").textContent = hiddenSlider.value;
+    });
+
     // parâmetros
     bindSlider("ai-threshold", () => pressThreshold, value => { pressThreshold = value; }, value => value.toFixed(2));
     bindSlider("ai-cooldown", () => fireCooldown, value => { fireCooldown = value; }, value => value + " ms");
@@ -128,6 +156,8 @@ function createPanel() {
     });
     // o treino salvo pode trazer outros pesos: quando ele terminar de carregar, os sliders acompanham
     trainingLoaded.then(() => {
+        hiddenSlider.value = HIDDEN_COUNT;
+        document.getElementById("ai-hidden-value").textContent = HIDDEN_COUNT;
         ACTION_KEYS.forEach(key => {
             document.getElementById("ai-weight-" + key).value = actionWeights[key];
             document.getElementById("ai-weight-" + key + "-value").textContent = formatWeight(actionWeights[key]);
@@ -185,6 +215,7 @@ function countWeights(net) {
 }
 
 function refreshPanel() {
+    document.getElementById("ai-new-network").textContent = "Nova rede aleatória (" + countWeights(network) + " pesos)";
     document.querySelectorAll("#ai-panel [data-mode]").forEach(button => {
         button.classList.toggle("active", button.dataset.mode === brainMode);
     });
@@ -213,7 +244,7 @@ function refreshTraining() {
     const best = training.bestEver;
     let bestText = "Nenhuma geração completa ainda.";
     if (best && best.fitness === -Infinity) {
-        bestText = "Melhor nave: a do treino antigo (geração " + best.generation + "). Ainda sem nota na regra nova.";
+        bestText = "Melhor nave: de antes de uma mudança de regra ou de rede (geração " + best.generation + "). Ainda sem nota.";
     }
     else if (best) {
         bestText = "Melhor nota até agora: " + best.fitness.toFixed(2) + " de " + LEVEL_COUNT + " (geração " + best.generation + ")";

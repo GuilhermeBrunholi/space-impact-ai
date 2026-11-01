@@ -35,13 +35,16 @@ Lê o jogo e devolve um objeto "limpo", sem referências às classes do jogo:
 {
   player: { x, y, width, height, hitbox: { y, height } },
   lives, score, specialCount, specialType,         // globais do jogo
-  enemies:          [{ x, y, width, height, vx, movement }],
+  enemies:          [{ x, y, width, height, vx, movement, isPowerUp, powerup }],
   enemyProjectiles: [{ x, y, width, height, vx, vy, homing }],
   terrain:          [{ x, y, width, height }],     // hitboxes do cenário (chão, teto, pilares)
 }
 ```
 
 - `enemies` inclui os **chefes** (Boss1–8, até 380 × 380 px) — eles vivem em `currentLevel.enemies` como os outros.
+- `enemies` também inclui os **itens coletáveis** (`PowerUp`: vida, míssil, laser ou parede). Eles **não machucam**:
+  encostar neles dá vida ou munição. `isPowerUp: true` os distingue e `powerup` diz qual é. Antes disso a rede os
+  tratava como inimigos e fugia deles.
 - `enemyProjectiles` mistura `EnemyMissile` (`homing: true`) e tiros comuns de inimigos (`Projectile`).
 - `terrain` vem de `currentLevel.background[].hitbox[]`. **Encostar no terreno mata, mesmo com escudo.**
 
@@ -50,7 +53,7 @@ números normalizados — próxima camada).
 
 ## Camada 2 — `getInputs(state)` (brain-nn.js)
 
-Transforma o estado numa **lista fixa de 11 números entre 0 e 1**. Fixa porque a rede tem exatamente 11 entradas:
+Transforma o estado numa **lista fixa de 19 números entre 0 e 1**. Fixa porque a rede tem exatamente 19 entradas:
 se um número faltar (por exemplo, quando não há tiros na tela), tudo desalinha.
 
 | # | Nome no painel | Como é calculado | 0 significa | 1 significa |
@@ -66,6 +69,14 @@ se um número faltar (por exemplo, quando não há tiros na tela), tudo desalinh
 | 8 | Tem especial? | `specialCount > 0` | sem munição especial | tem |
 | 9 | Espaço acima | espaço livre até o teto | encostando no teto | 150 px ou mais livres |
 | 10 | Espaço abaixo | espaço livre até o chão | encostando no chão | 150 px ou mais livres |
+| 11 | Existe item? | 1 se há item coletável à frente | não há | há |
+| 12 | Dist. item | igual ao 3, para itens (largura máxima 80) | colado | longe |
+| 13 | Altura item | igual ao 4, para itens | item bem acima | bem abaixo |
+| 14 | Item é vida? | o item mais próximo é uma vida | outro item (ou nenhum) | vida |
+| 15 | Perigo tiro | urgência do tiro que vai acertar a nave primeiro | nada vem na direção da nave | impacto agora |
+| 16 | Onde: tiro | altura (com folga) de onde o tiro vai passar, em relação à nave | bem acima | bem abaixo (0,5 = alinhado) |
+| 17 | Perigo inimigo | igual ao 15, para inimigos | nada vem | impacto agora |
+| 18 | Onde: inimigo | igual ao 16, para inimigos | bem acima | bem abaixo |
 
 ### Normalização
 
@@ -108,6 +119,25 @@ situação real e diferente. A flag avisa a rede para ignorar os outros dois nú
 
 Por que posição **relativa** e não absoluta: a rede precisa saber "o inimigo está acima de mim", não "o inimigo está
 em y = 230". A posição absoluta da nave já entra nas entradas 0 e 1.
+
+Nos inimigos (entradas 5–7) os itens coletáveis ficam **de fora**: eles têm o sensor próprio, 11–14.
+
+### `describeDanger()` — perigo iminente (entradas 15–18)
+
+"O tiro mais próximo" não diz se ele vai **acertar**: um tiro 100 px à frente, mas 200 px acima, é inofensivo; um
+tiro mais longe, na altura da nave, não. Para cada tiro (ou inimigo) à frente, a função **projeta o movimento em
+linha reta** até a ponta da nave:
+
+1. `tempo = distância ÷ velocidade de aproximação` (em frames); se o objeto se afasta, é ignorado;
+2. só conta o que chega em até **60 frames** (1 s, `DANGER_HORIZON`);
+3. a altura do objeto nesse instante (`y + vy × tempo`), com **20 px de folga** em cima e embaixo
+   (`DANGER_MARGIN`, porque a nave também se mexe até lá), cruza a hitbox da nave?
+4. dos que cruzam, vale o que chega **primeiro**.
+
+Saída: `[urgência, altura]`. Urgência = `1 − tempo ÷ 60` (0 = nada vem, 1 = impacto agora); a altura diz **para que
+lado desviar**. Limite: os inimigos não informam `vy`, então valem como se andassem em linha reta (ondas e zigue-zague
+fogem disso); só os mísseis teleguiados informam `vy`. A folga cobre parte do erro. O terreno não entra aqui — já tem
+os sensores 9 e 10.
 
 ### `describeTerrain()` — espaço acima e abaixo
 

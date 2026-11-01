@@ -34,9 +34,9 @@ function createTelemetry() {
         <div class="tl-ships" id="tl-ships" aria-label="Naves da geração"></div>
         <div class="tl-columns">
             <div>
-                <p class="tl-note">Pontos da nave atual por fase (borda = como terminou):</p>
+                <p class="tl-note">Pontos da nave atual por fase e progresso contra o chefe (borda = como terminou):</p>
                 <div class="tl-levels" id="tl-levels">
-                    ${Array.from({ length: LEVEL_COUNT }, (_, i) => `<div><span>fase ${i + 1}</span><strong>-</strong></div>`).join("")}
+                    ${Array.from({ length: LEVEL_COUNT }, (_, i) => `<div><span>fase ${i + 1}</span><strong>-</strong><small>chefe -</small></div>`).join("")}
                 </div>
             </div>
             <div>
@@ -58,10 +58,10 @@ function createTelemetry() {
         </article>
         <div class="tl-grid">
             <article class="tl-card">
-                <h4 title="Nota = soma de (pontos da fase ÷ recorde da fase). Quando um recorde sobe, a régua fica mais exigente e a nota pode cair.">EVOLUÇÃO DA NOTA (0 A 8)</h4>
+                <h4 title="Cada fase vale até 1: metade é pontos da fase ÷ recorde da fase, metade é o progresso contra o chefe (0,3 por chegar nele, até 0,95 tirando vida, 1 ao matá-lo). Quando um recorde sobe, a régua fica mais exigente e a nota pode cair.">EVOLUÇÃO DA NOTA (0 A 8)</h4>
                 <canvas id="tl-evolution" class="tl-canvas" aria-label="Melhor nota e média por geração"></canvas>
                 <p class="tl-note"><span class="tl-key" style="background:var(--lcd)"></span>melhor
-                    <span class="tl-key" style="background:var(--panel-muted)"></span>média · cada fase vale até 1 (pontos ÷ recorde)</p>
+                    <span class="tl-key" style="background:var(--panel-muted)"></span>média · cada fase vale até 1 (½ pontos ÷ recorde, ½ progresso contra o chefe)</p>
             </article>
 
             <article class="tl-card">
@@ -158,6 +158,9 @@ function refreshProgress() {
         cell.classList.toggle("current", current);
         cell.style.borderBottomColor = done ? telemetryColors.ends[training.levelEnds[i]] : "";
         cell.title = done ? END_LABELS[training.levelEnds[i]] : "";
+        const boss = done ? training.levelBoss[i] : current ? bossProgress() : null;
+        cell.querySelector("small").textContent = boss === null ? "chefe -"
+            : boss >= 1 ? "chefe ✓" : boss === 0 ? "chefe 0%" : "chefe " + Math.round(boss * 100) + "%";
     });
 
     ACTION_KEYS.forEach(key => {

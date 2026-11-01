@@ -237,7 +237,7 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 
 /* o style.css do jogo centraliza todo canvas (left 50% + translate); os gráficos não querem isso */
 .tl-canvas { display: block; position: static; left: auto; transform: none; width: 100%; height: 130px; background: var(--chart-bg); border-radius: 4px; }
-.tl-canvas.tall { height: 210px; }
+.tl-canvas.tall { height: 440px; }   /* 19 entradas: ~22 px por linha, para os rótulos não se sobreporem */
 
 .tl-numbers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
 .tl-numbers div { border: 1px solid var(--panel-line); border-radius: 4px; padding: 2px; }
@@ -254,6 +254,7 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 .tl-levels div { border: 1px solid var(--panel-line); border-bottom-width: 4px; border-radius: 4px; padding: 2px 0; }
 .tl-levels span { display: block; font-size: 13px; color: var(--panel-muted); }
 .tl-levels strong { font-weight: 400; font-size: 20px; font-variant-numeric: tabular-nums; }
+.tl-levels small { display: block; font-size: 13px; color: var(--panel-muted); }
 .tl-levels div.current { border-color: var(--hot); }
 .tl-levels div.current strong { color: var(--hot); }
 #tl-actions { display: grid; gap: 3px; margin-top: 4px; }

@@ -34,6 +34,22 @@ Detalhes de implementação:
 - `allow_reuse_address = False`: no Windows, reaproveitar o endereço deixaria **dois servidores** escutarem a mesma
   porta sem erro. Se a porta 8000 estiver ocupada, ele avisa e encerra com código 0 (o VS Code segue normalmente).
 
+### Segurança do servidor
+
+Escutar só em `127.0.0.1` não basta: qualquer página aberta no navegador consegue mandar um `POST` ou `DELETE` para
+`localhost:8000` (e um DNS malicioso pode fazer um site parecer ser `localhost`). Por isso o `server.py` confere:
+
+- **`Host`**: só `localhost:8000` e `127.0.0.1:8000` (contra DNS rebinding); outro valor recebe `403`;
+- **`Origin`** nas escritas (`POST`/`DELETE`): se vier, tem de ser `http://localhost:8000` ou `http://127.0.0.1:8000`;
+- **`Content-Type: application/json`** no `POST`: um formulário de outro site não consegue enviá-lo sem pedir
+  permissão antes (e o servidor não responde a esse pedido);
+- **formato**: o corpo precisa ser um objeto com a lista `genomes`; senão, `400`;
+- **o que é entregue**: caminhos com um trecho começando em `.` (`.git`, `.mcp.json`) e a pasta `mcp-server/` recebem
+  `403`.
+
+Isso protege contra outros sites, não contra outros programas da própria máquina. O servidor não tem login e não deve
+ser exposto na rede.
+
 ### Como a página decide entre arquivo e `localStorage`
 
 `loadTraining()` faz um `GET /api/training`. Se a resposta tem `Content-Type: application/json`, **o servidor manda**
@@ -47,17 +63,19 @@ clicar rápido em "Iniciar treino" poderia começar do zero e sobrescrever o tre
 
 ```jsonc
 {
-  "fitnessVersion": 3,            // versão da fórmula da nota (ver 06 — Treino)
+  "fitnessVersion": 4,            // versão da fórmula da nota (ver 06 — Treino)
   "weightLimit": 4,               // limite de pesos com que estas redes treinaram (ver 05)
+  "hiddenCount": 6,               // neurônios escondidos (ver 04); ausente = 6
   "actionWeights": { "up": 0, "down": 0, "left": -3, "right": -3, "fire": 2, "special": -8 },
   "generation": 26,               // próxima geração a jogar
-  "genomes": [[…114 números…], …],          // as 30 redes da população atual (ainda sem nota)
+  "genomes": [[…162 números…], …],          // as 30 redes da população atual (ainda sem nota)
   "bestEver": {
-    "genome": […114 números…],
+    "genome": […162 números…],
     "fitness": 4.23,              // nota (0 a 8) medida pelos recordes atuais
     "points": 5612,               // soma dos pontos crus
     "generation": 5,
-    "levelScores": [532, 534, 434, 440, 1010, 1703, 433, 26]
+    "levelScores": [532, 534, 434, 440, 1010, 1703, 433, 26],
+    "levelBoss": [1, 0.84, 0, 0.3, 0, 0, 0, 0]   // progresso contra o chefe em cada fase (0 a 1)
   },
   "history": [                    // uma entrada por geração completa
     {
@@ -86,9 +104,10 @@ atual recomeça da primeira nave.
 
 | Diferença no arquivo | O que acontece ao carregar |
 |---|---|
-| Genomas de 89 ou 102 números | `upgradeGenome()`: entradas novas com peso 0, saídas novas aleatórias ([04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
+| Genomas de 89, 102 ou 114 números | `upgradeGenome()`: entradas novas com peso 0, saídas novas aleatórias ([04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
 | Sem `weightLimit` (ou diferente de 4) | `repairGenome()`: reescala todas as redes e revive saídas travadas em metade da população; o `bestEver` só é reescalado ([05](05-neuroevolucao.md#conserto-de-redes-saturadas--repairgenome)) |
-| `fitnessVersion` diferente | mantém os pesos; recria os recordes a partir da melhor nave e do histórico; zera o histórico e as notas da última geração |
+| `fitnessVersion` diferente | mantém os pesos; recria os recordes a partir da melhor nave e do histórico; zera o histórico e as notas da última geração; uma `bestEver` sem `levelBoss` perde a nota (`-Infinity`) |
+| Sem `hiddenCount` | 6 neurônios escondidos |
 | Sem `actionWeights` | usa os pesos de tecla padrão |
 | Sem `lastScores` / `levelRecords` | começa vazio |
 
@@ -102,6 +121,7 @@ Antes de cada mudança que alterava o formato ou a população, foi feita uma c�
 | `training-antes-terreno.json` | 88 | sensores de terreno (102 → 114 números) |
 | `training-antes-equilibrio.json` | 115 | nota equilibrada por fase (versão 3) |
 | `training-antes-limite-pesos.json` | 128 | limite de ±4 e conserto das redes saturadas |
+| `training-antes-sensores.json` (e `best-network-antes-sensores.json`) | 260 | 19 entradas (114 → 162 números): item coletável e perigo iminente |
 
 Para voltar a um backup: pare o treino, renomeie o backup para `training.json` e recarregue a página. A conversão
 automática cuida do formato.

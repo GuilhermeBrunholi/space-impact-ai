@@ -1,16 +1,18 @@
 # 04 — Rede neural
 
-A rede neural é o cérebro da Fase 2. Ela recebe os 11 números do `getInputs()` e devolve 6 números, um para cada
+A rede neural é o cérebro da Fase 2. Ela recebe os 19 números do `getInputs()` e devolve 6 números, um para cada
 tecla. Toda a rede é escrita à mão em `brain-nn.js`, sem bibliotecas, para dar para ver cada conta.
 
-## Formato: 11 → 6 → 6
+## Formato: 19 → 6 → 6
 
 ```mermaid
 flowchart LR
-    subgraph Entradas [11 entradas]
+    subgraph Entradas [19 entradas]
         i0[Altura nave] & i1[Horizontal nave] & i2[Existe tiro?] & i3[Dist. tiro] & i4[Altura tiro]
         i5[Existe inimigo?] & i6[Dist. inimigo] & i7[Altura inimigo] & i8[Tem especial?]
         i9[Espaço acima] & i10[Espaço abaixo]
+        i11[Existe item?] & i12[Dist. item] & i13[Altura item] & i14[Item é vida?]
+        i15[Perigo tiro] & i16[Onde: tiro] & i17[Perigo inimigo] & i18[Onde: inimigo]
     end
     subgraph Escondida [6 neurônios escondidos]
         h0((h0)) & h1((h1)) & h2((h2)) & h3((h3)) & h4((h4)) & h5((h5))
@@ -21,9 +23,9 @@ flowchart LR
     Entradas --> Escondida --> Saídas
 ```
 
-- **Camada escondida:** 6 neurônios × (11 pesos + 1 bias) = **72 números**.
+- **Camada escondida:** 6 neurônios (o padrão; ver [abaixo](#número-de-neurônios-escondidos-configurável)) × (19 pesos + 1 bias) = **120 números**.
 - **Camada de saída:** 6 neurônios × (6 pesos + 1 bias) = **42 números**.
-- **Total: 114 números.** Esses 114 números *são* o cérebro: duas redes com os mesmos 114 números jogam igual.
+- **Total: 162 números.** Esses 162 números *são* o cérebro: duas redes com os mesmos 162 números jogam igual.
 
 "Totalmente conectada": cada neurônio de uma camada recebe **todas** as saídas da camada anterior.
 
@@ -129,14 +131,36 @@ completo em [09 — Diário de decisões](09-diario-de-decisoes.md#a-nave-não-d
 
 ## A rede como lista: o genoma
 
-Para a evolução, a rede é "achatada" numa lista de 114 números (`networkToGenome`), nesta ordem:
+Para a evolução, a rede é "achatada" numa lista de 162 números (`networkToGenome`), nesta ordem:
 
 ```
-[ h0: w0..w10, bias ] [ h1: … ] … [ h5: … ]      ← 6 × 12 = 72 (camada escondida)
+[ h0: w0..w18, bias ] [ h1: … ] … [ h5: … ]      ← 6 × 20 = 120 (camada escondida)
 [ up: w0..w5, bias ] [ down: … ] … [ special: … ] ← 6 × 7  = 42 (camada de saída)
 ```
 
 `genomeToNetwork` faz o caminho de volta. Ver [05 — Neuroevolução](05-neuroevolucao.md).
+
+## Número de neurônios escondidos (configurável)
+
+O padrão é 6 (`DEFAULT_HIDDEN_COUNT`), mas o painel tem um slider **Neurônios escondidos** (2 a 32). O tamanho do genoma
+é `neurônios × 20 + 6 × (neurônios + 1)`: 162 com 6, 214 com 8, 318 com 12.
+
+| Neurônios | Genoma |
+|---|---|
+| 6 | 162 |
+| 8 | 214 |
+| 12 | 318 |
+
+`setHiddenCount()` (`training.js`) converte **todas** as redes do treino de uma vez, com `resizeGenome()`:
+
+- **Aumentar:** os neurônios novos nascem aleatórios, mas com **peso 0 em todas as saídas**. A rede continua dando
+  exatamente as mesmas saídas (conferido no navegador: 6 → 12 sem diferença), e a evolução ajusta os novos.
+- **Diminuir:** os últimos neurônios são cortados. A rede pode jogar diferente, então o painel pede confirmação, a
+  geração recomeça e a melhor nave perde a nota (não é mais a rede que foi avaliada).
+
+Mais neurônios dão mais capacidade, mas aumentam o espaço de busca: com 30 naves por geração a evolução pode andar
+mais devagar. O número vale ao soltar o slider e é salvo no treino (`hiddenCount`); treinos antigos, sem o campo,
+carregam como 6.
 
 ## Como a rede cresceu (e como treinos antigos são aproveitados)
 
@@ -144,7 +168,8 @@ Para a evolução, a rede é "achatada" numa lista de 114 números (`networkToGe
 |---|---|---|---|---|
 | 1 | 8 | 5 | 89 | posição da nave, tiro e inimigo mais próximos |
 | 2 | 9 | 6 | 102 | + "tem especial?" e a saída `special` |
-| 3 (atual) | 11 | 6 | 114 | + espaço acima e abaixo (terreno) |
+| 3 | 11 | 6 | 114 | + espaço acima e abaixo (terreno) |
+| 4 (atual) | 19 | 6 | 162 | + item coletável (4 entradas) e perigo iminente de tiros e inimigos (4 entradas) |
 
 Entradas e saídas novas sempre entram **no fim** da lista. Assim, `upgradeGenome()` converte um genoma antigo sem
 perder o aprendizado:

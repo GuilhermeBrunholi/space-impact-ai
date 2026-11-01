@@ -13,7 +13,7 @@ function decide(state) {
 
     const player = state.player;
 
-    const threats = state.enemies.filter(threat => isThreat(player, threat));
+    const threats = state.enemies.filter(threat => !threat.isPowerUp && isThreat(player, threat));
 
     if (threats.length > 0) {
         // pega a ameaça mais próxima

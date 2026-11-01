@@ -66,17 +66,34 @@ Level.prototype.playerDead = function () {
 nada bate, foi um tiro. Funciona porque, no momento em que o jogo chama `playerDead()`, o objeto que matou ainda está
 nas listas (o jogo só remove os objetos marcados como `delete` no fim do frame).
 
-## A nota (fitness) — versão 3
+## A nota (fitness) — versão 4
 
 ### A ideia
 
 ```
-nota da nave = Σ (pontos na fase ÷ recorde da fase)      para as 8 fases
+nota da fase = ½ × (pontos na fase ÷ recorde da fase) + ½ × progresso contra o chefe
+nota da nave = Σ nota da fase                              para as 8 fases
 ```
 
-- cada fase vale **até 1**; a nota vai de **0 a 8**;
+- cada fase vale **até 1** (`POINTS_SHARE` = ½ pontos, ½ chefe); a nota vai de **0 a 8**;
 - **recorde** = a maior pontuação já vista naquela fase (`training.levelRecords`). Ele só sobe e é a "régua";
 - os pontos de cada fase incluem um **desempate** de 0,1 ponto por segundo vivo (`SURVIVAL_POINTS_PER_SECOND`).
+
+### O progresso contra o chefe
+
+Só se passa a fase **matando o chefe** (`levelComplete` só vira `true` quando ele morre). Mas os pontos sozinhos não
+distinguem "morreu antes do chefe" de "chegou nele e não conseguiu vencer": as redes aleatórias nunca chegavam à
+vitória, então não havia caminho gradual até ela. O progresso (`bossProgress()`) vale:
+
+| Situação | Progresso |
+|---|---|
+| nem chegou ao chefe | 0 |
+| chegou vivo | 0,3 (`BOSS_REACHED`) |
+| tirou vida dele | 0,3 + 0,65 × (fração de vida tirada), até 0,95 (`BOSS_DAMAGE_MAX`) |
+| matou | 1 |
+
+`trackBoss()` roda a cada frame: guarda a vida do chefe quando ele aparece (`bossMaxHp`) e a vida atual (`bossHp`).
+O progresso de cada fase fica em `levelBoss` (por nave) e também em `bestEver`.
 
 ### Por que não somar os pontos
 
@@ -96,7 +113,8 @@ recorde, ir de 0 a 100 numa fase cujo recorde é 100 vale tanto quanto ir de 0 a
 - **Cada fase é limitada a 1** (`Math.min(1, …)`): passar do recorde não dá mais que 1.
 - **A nota pode cair sem a rede piorar**: quando um recorde sobe, a régua fica mais exigente para todos.
 - A **melhor de todas** (`bestEver`) também é medida de novo pelos recordes atuais a cada geração, para a comparação
-  ser justa.
+  ser justa. Uma `bestEver` de treino anterior à versão 4 não tem `levelBoss`: fica com nota `-Infinity` (dá para
+  assisti-la, mas qualquer nave nova a supera).
 - Durante a partida, "nota atual" no painel é uma **prévia** com os recordes de agora (`currentFitness()`).
 
 ### Histórico das versões da nota
@@ -105,7 +123,8 @@ recorde, ir de 0 a 100 numa fase cujo recorde é 100 vale tanto quanto ir de 0 a
 |---|---|---|
 | 1 | pontos + 1 por segundo vivo, numa partida contínua a partir da fase 1 (até 180 s) | 180 s não chegavam à fase 5; tempo vivo premiava fugir |
 | 2 | soma dos pontos nas 8 fases, cada uma do zero | fases que rendem muito dominavam a nota |
-| 3 (atual) | soma de pontos ÷ recorde por fase | — |
+| 3 | soma de pontos ÷ recorde por fase | pontos não distinguem "morreu antes do chefe" de "chegou nele e perdeu" |
+| 4 (atual) | ½ pontos ÷ recorde + ½ progresso contra o chefe, por fase | — |
 
 Ao carregar um treino de outra versão, os pesos são mantidos, os recordes são reconstruídos a partir do que foi
 registrado (melhor nave e telemetria), e o gráfico de evolução recomeça (notas de escalas diferentes não se comparam).

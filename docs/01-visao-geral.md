@@ -27,7 +27,7 @@ problema de **aprendizado por reforço**.
 
 | Pergunta | Resposta |
 |---|---|
-| Que cérebro? | **Perceptron multicamadas**: rede neural *feedforward* (a informação só anda para frente), uma camada escondida, ativação sigmoide — 11 → 6 → 6, 114 pesos |
+| Que cérebro? | **Perceptron multicamadas**: rede neural *feedforward* (a informação só anda para frente), uma camada escondida, ativação sigmoide — 19 → 6 → 6, 162 pesos |
 | Como aprende? | **Algoritmo genético** (computação evolutiva): população de 30, torneio, cruzamento, mutação, elitismo |
 | Que problema? | **Aprendizado por reforço**: não há gabarito de qual tecla era a certa, só uma recompensa no fim (os pontos). Resolvido por **busca direta da política**: testa cérebros inteiros e fica com os que pontuam mais |
 | Que agente? | **Reativo e determinístico**: decide só pelo que vê no frame atual, sem memória, sempre igual para a mesma situação |
@@ -52,14 +52,14 @@ O que ela **não** é:
 - **Não é supervisionada:** ninguém mostrou exemplos de jogada certa, por isso não há *backpropagation*.
 - **Não é deep learning:** a rede é rasa (uma camada escondida com 6 neurônios); redes profundas têm muitas camadas e
   milhares ou milhões de pesos.
-- **Não é IA generativa:** não gera texto nem imagem como o ChatGPT ou o Claude; transforma 11 números em 6 teclas.
+- **Não é IA generativa:** não gera texto nem imagem como o ChatGPT ou o Claude; transforma 19 números em 6 teclas.
 - **Não é aprendizado por reforço "clássico":** Q-learning, DQN e PPO aprendem a cada jogada, com gradiente; a
   neuroevolução só olha a nota final de cada nave.
 
 | Tipo | Aprende sozinho? | Precisa de gabarito? | Tamanho típico | Exemplo |
 |---|---|---|---|---|
 | Sistema de regras | não | não | alguns `if` | `brain-rules.js` |
-| **Neuroevolução (este projeto)** | sim | não, só a nota | 114 pesos | `brain-nn.js` + `evolution.js` |
+| **Neuroevolução (este projeto)** | sim | não, só a nota | 162 pesos | `brain-nn.js` + `evolution.js` |
 | Reforço com gradiente | sim | não, só a recompensa | milhares a milhões | DQN jogando Atari |
 | Supervisionado | sim | sim | milhares a milhões | reconhecer dígitos escritos à mão |
 | IA generativa (LLM) | sim | sim, prever a próxima palavra | bilhões | ChatGPT, Claude |
@@ -155,6 +155,8 @@ flowchart TB
         tele[ai-telemetry.js]
     end
     server[server.py] --- data[(training-data/)]
+    mcp[mcp-server/server.py] -->|Playwright abre o jogo| server
+    mcp -->|chama getState, act, update| ai
 
     ai -->|lê estado, escreve keys| game
     ai --> rules

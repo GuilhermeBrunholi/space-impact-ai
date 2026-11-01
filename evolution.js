@@ -21,7 +21,8 @@ function networkToGenome(net) {
     return genome;
 }
 
-function genomeToNetwork(genome) {
+// hiddenCount diferente do atual só serve para converter genomas entre tamanhos (resizeGenome)
+function genomeToNetwork(genome, hiddenCount = HIDDEN_COUNT) {
     let position = 0;
     function readLayer(inputCount, neuronCount) {
         const layer = [];
@@ -33,9 +34,26 @@ function genomeToNetwork(genome) {
         return layer;
     }
     return {
-        hidden: readLayer(INPUT_COUNT, HIDDEN_COUNT),
-        output: readLayer(HIDDEN_COUNT, OUTPUT_COUNT),
+        hidden: readLayer(INPUT_COUNT, hiddenCount),
+        output: readLayer(hiddenCount, OUTPUT_COUNT),
     };
+}
+
+// Muda o número de neurônios escondidos de um genoma.
+// Para mais: os neurônios novos nascem aleatórios, mas com peso 0 nas saídas, então a rede continua jogando igual
+// e a evolução ajusta os novos. Para menos: os últimos neurônios são cortados, e a rede pode jogar diferente.
+function resizeGenome(genome, fromCount, toCount) {
+    if (fromCount === toCount) return genome;
+    const net = genomeToNetwork(genome, fromCount);
+    if (toCount > fromCount) {
+        const extra = toCount - fromCount;
+        net.hidden.push(...createLayer(INPUT_COUNT, extra));
+        net.output.forEach(n => n.weights.push(...new Array(extra).fill(0)));
+    } else {
+        net.hidden.length = toCount;
+        net.output.forEach(n => { n.weights.length = toCount; });
+    }
+    return networkToGenome(net);
 }
 
 function randomGenome() {
@@ -49,6 +67,7 @@ function randomGenome() {
 const LEGACY_SHAPES = [
     { inputs: 8, outputs: 5 },   // 89 números: a primeira versão
     { inputs: 9, outputs: 6 },   // 102 números: + "tem especial?" e a saída "special"
+    { inputs: 11, outputs: 6 },  // 114 números: + espaço livre acima e abaixo (terreno)
 ];
 
 function genomeLength(inputs, outputs) {
@@ -161,8 +180,23 @@ function nextGeneration(population) {
     while (next.length < POPULATION_SIZE) {
         const parentA = tournament(ranked);
         const parentB = tournament(ranked);
-        next.push({ genome: mutate(crossover(parentA.genome, parentB.genome)), fitness: 0 });
+        const child = mutate(crossover(parentA.genome, parentB.genome));
+        next.push({ genome: Math.random() < REVIVE_CHANCE ? reviveVerticalOutputs(child) : child, fitness: 0 });
     }
 
     return next;
+}
+
+// Cima e baixo travados fazem a nave só subir (ou só descer): o `down` voltava a morrer no limite dos pesos (bias −4,
+// soma máxima < 0) e, como o conserto só rodava ao carregar o treino, nenhuma geração conseguia testá-lo de novo.
+// Aqui, parte dos filhos de cada geração ganha um `up`/`down` sorteado de novo se o atual estiver travado.
+const REVIVE_CHANCE = 0.3;
+const VERTICAL_OUTPUTS = [0, 1];   // posições de "up" e "down" em ACTION_KEYS
+
+function reviveVerticalOutputs(genome) {
+    const net = genomeToNetwork(genome);
+    VERTICAL_OUTPUTS.forEach(i => {
+        if (isStuck(net.output[i])) net.output[i] = createLayer(HIDDEN_COUNT, 1)[0];
+    });
+    return networkToGenome(net);
 }

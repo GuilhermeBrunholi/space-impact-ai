@@ -162,7 +162,42 @@ sumia no ruído da fase 7.
 
 **Decisão:** nota equilibrada (versão 3) — cada fase vale `pontos ÷ recorde`, até 1. Com cuidados: a régua é a mesma
 para a geração inteira, piso de 10 no recorde, e a melhor de todas é medida de novo a cada geração
-(ver [06](06-treino.md#a-nota-fitness--versão-3)).
+(ver [06](06-treino.md#a-nota-fitness--versão-4)).
+
+## Item coletável era "inimigo"
+
+**Observação:** o subagente que jogou pelo servidor MCP notou que "colidir com inimigos grandes e lentos dá vida
+extra". Eram os `PowerUp` (vida, míssil, laser, parede), que o jogo guarda na mesma lista dos inimigos. A rede os via
+como ameaça e fugia deles.
+
+**Decisão:** `getState()` passou a marcar `isPowerUp` e o tipo; a rede ganhou sensores próprios para o item mais
+próximo (entradas 11–14) e o item saiu do sensor de inimigo. O `brain-rules.js` também os ignora.
+
+## O tiro mais próximo não é o tiro perigoso
+
+**Observação:** "tiro mais próximo" não diz se ele vai acertar. Um agente jogando pelo MCP desviava olhando a altura
+de cada tiro e onde ele ia passar — informação que as 11 entradas não tinham.
+
+**Decisão:** sensores de **perigo iminente** (entradas 15–18) para tiros e para inimigos: projetam o movimento em
+linha reta, veem se cruza a hitbox em até 1 s (com 20 px de folga) e devolvem urgência e para que lado desviar.
+Entradas novas entram no fim e os treinos antigos são convertidos com peso 0 (114 → 162 números).
+
+**Tentativa que não deu certo:** aproveitar a partida do agente como "demonstração" (clonagem de comportamento).
+Foram 592 pares estado → teclas; a rede só aprendeu a atirar (cima/baixo ficaram perto do que se acerta nunca
+apertando). O motivo: as decisões do agente dependiam da posição exata de cada tiro, que as 11 entradas não mostravam.
+Daí a decisão dos sensores acima. Dados e script ficaram em `training-data/claude-demos.json` e `tools/clone_demos.py`.
+
+**Bug achado de passagem:** o servidor MCP mostrava `hitboxTop` somando o `y` duas vezes (nave em y = 220 aparecia com
+hitbox em 450). O agente concluiu "a hitbox real é maior que a listada". Corrigido em `mcp-server/server.py`.
+
+## Só se passa de fase matando o chefe
+
+**Observação:** `levelComplete` só vira `true` quando o chefe morre, então, no treino, "cleared" exige vencê-lo. As
+redes aleatórias nunca chegavam lá e a nota (só pontos) não diferenciava "morreu antes do chefe" de "chegou nele".
+
+**Decisão:** nota versão 4 — metade da fase vale `pontos ÷ recorde`, metade o progresso contra o chefe (0,3 por chegar
+vivo, até 0,95 tirando vida, 1 ao matar). Ver [06](06-treino.md#o-progresso-contra-o-chefe). Num teste, uma nave
+aleatória chegou ao chefe e tirou vida dele nas fases 2 e 3 (progresso 0,84 e 0,69).
 
 ## Gráficos deslocados
 
@@ -233,3 +268,6 @@ Várias rodadas a partir de prints do usuário:
 5. **Tempo de jogo ≠ tempo de relógio.** Tudo que é regra do jogo conta frames.
 6. **Faça backup antes de mudar o formato do treino** — e escreva a conversão em vez de jogar o treino fora.
 7. **Teste de controle.** Comparar "com" e "sem" (sensores) evitou atribuir a uma mudança um ganho que veio de outra.
+8. **Cada coisa do jogo precisa de um sensor com o nome certo.** Um item coletável na lista dos inimigos virou
+   "inimigo" para a rede.
+9. **Dados de demonstração só ajudam se as entradas mostram o que o demonstrador via.**

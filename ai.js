@@ -28,6 +28,8 @@ function getState() {
             height: enemy.height,
             vx: -enemy.speedX,
             movement: enemy.movement,
+            isPowerUp: !!enemy.isPowerUp,   // item coletável (vive na mesma lista dos inimigos, mas não machuca)
+            powerup: enemy.isPowerUp ? enemy.powerup : null,   // "life", "missile", "laser" ou "wall"
         })),
 
         enemyProjectiles: level.enemyProjectiles.map(shot => {

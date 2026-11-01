@@ -8,7 +8,10 @@ const MAX_SHOT_WIDTH = 50;     // o tiro mais largo é o EnemyMissile (o Project
 const MAX_ENEMY_WIDTH = 380;   // o maior inimigo é o Boss8 (os comuns têm até 100)
 const TERRAIN_LOOKAHEAD = 150;   // quanto à frente da nave o terreno já conta (px)
 const TERRAIN_RANGE = 150;       // espaço livre a partir do qual tanto faz: 1 = 150 px ou mais
-const INPUT_COUNT = 11;
+const DANGER_HORIZON = 60;   // frames à frente em que um impacto já conta como perigo (60 = 1 s)
+const DANGER_MARGIN = 20;    // folga vertical (px) em volta do objeto: a nave também se mexe até lá
+const MAX_POWERUP_WIDTH = 80;
+const INPUT_COUNT = 19;
 
 // (valor − min) / (max − min), preso entre 0 e 1 para nenhum caso inesperado escapar da faixa
 function normalize(value, min, max) {
@@ -43,6 +46,56 @@ function describeNearest(objects, player, maxObjectWidth) {
     ];
 }
 
+// Perigo iminente: de todos os objetos, qual vai acertar a nave mais cedo se ela ficar parada?
+// Projeta cada um em linha reta (vx, vy por frame) até a frente da nave e vê se a altura dele, com folga, cruza a hitbox.
+// Devolve [perigo, altura relativa]: perigo 0 = nada vem na direção da nave, 1 = impacto agora;
+// altura 0 = bem acima, 0,5 = alinhado, 1 = bem abaixo (diz para que lado desviar).
+// Inimigos não informam vy, então valem como se andassem em linha reta; a folga cobre parte do erro.
+function describeDanger(objects, player) {
+    const hitTop = player.hitbox.y;
+    const hitBottom = player.hitbox.y + player.hitbox.height;
+    const front = player.x + player.width;
+
+    let bestTime = Infinity;
+    let bestY = 0;
+    objects.forEach(obj => {
+        if (obj.x + obj.width < player.x || obj.x >= mainCanvas.width) return;   // já passou ou ainda nem entrou na tela
+        const closing = -obj.vx;   // px por frame em direção à nave
+        const distance = obj.x - front;
+        let time = 0;
+        if (distance > 0) {
+            if (closing <= 0) return;   // está longe e não se aproxima
+            time = distance / closing;
+        }
+        if (time > DANGER_HORIZON) return;
+
+        const top = obj.y + (obj.vy || 0) * time - DANGER_MARGIN;
+        const bottom = obj.y + (obj.vy || 0) * time + obj.height + DANGER_MARGIN;
+        if (bottom < hitTop || top > hitBottom) return;   // passa por cima ou por baixo
+
+        if (time < bestTime) {
+            bestTime = time;
+            bestY = (top + bottom) / 2;
+        }
+    });
+
+    if (bestTime === Infinity) return [0, 0.5];
+    const maxVerticalGap = mainCanvas.height - (PLAY_TOP + player.height / 2);
+    const gap = bestY - (player.y + player.height / 2);
+    return [1 - bestTime / DANGER_HORIZON, normalize(gap, -maxVerticalGap, maxVerticalGap)];
+}
+
+// Item coletável mais próximo à frente: [existe?, distância, altura relativa, é vida?]
+function describeCollectible(powerups, player) {
+    const nearest = nearestAhead(powerups, player);
+    return [...describeNearest(powerups, player, MAX_POWERUP_WIDTH), nearest && nearest.powerup === "life" ? 1 : 0];
+}
+
+function nearestAhead(objects, player) {
+    const ahead = objects.filter(obj => obj.x + obj.width >= player.x && obj.x < mainCanvas.width);
+    return ahead.length === 0 ? null : ahead.reduce((a, b) => (a.x < b.x ? a : b));
+}
+
 // Espaço livre acima e abaixo da nave, olhando a faixa que ela ocupa e um pouco à frente.
 // Um bloco cujo centro fica acima do centro da nave é teto; abaixo, é chão (um pilar à frente também conta como chão).
 // Sem terreno, os limites são as bordas da área de jogo.
@@ -73,19 +126,28 @@ function getInputs(state) {
     const playBottom = mainCanvas.height - player.height;   // maior y: base da nave encostada no chão
     const playRight = mainCanvas.width - player.width;      // maior x: ponta da nave encostada na borda direita
 
+    const hostiles = state.enemies.filter(e => !e.isPowerUp);   // item coletável não machuca: sensor próprio
+    const powerups = state.enemies.filter(e => e.isPowerUp);
+
     return [
         normalize(player.y, PLAY_TOP, playBottom),   // 0: altura da nave (0 = topo, 1 = base)
         normalize(player.x, PLAY_LEFT, playRight),   // 1: posição horizontal (0 = esquerda, 1 = direita)
         ...describeNearest(state.enemyProjectiles, player, MAX_SHOT_WIDTH),   // 2, 3, 4: tiro mais próximo
-        ...describeNearest(state.enemies, player, MAX_ENEMY_WIDTH),           // 5, 6, 7: inimigo mais próximo
+        ...describeNearest(hostiles, player, MAX_ENEMY_WIDTH),                // 5, 6, 7: inimigo mais próximo
         state.specialCount > 0 ? 1 : 0,                                       // 8: ainda tem arma especial?
         ...describeTerrain(state.terrain, player),                            // 9, 10: espaço livre acima e abaixo
+        ...describeCollectible(powerups, player),                             // 11, 12, 13, 14: item mais próximo (existe, dist., altura, é vida?)
+        ...describeDanger(state.enemyProjectiles, player),                    // 15, 16: perigo iminente de tiro (urgência, altura)
+        ...describeDanger(hostiles, player),                                  // 17, 18: perigo iminente de inimigo (urgência, altura)
     ];
 }
 
 // ── Rede neural: 11 entradas → 6 neurônios escondidos → 6 saídas ──
 
-const HIDDEN_COUNT = 6;
+const DEFAULT_HIDDEN_COUNT = 6;
+const MIN_HIDDEN_COUNT = 2;
+const MAX_HIDDEN_COUNT = 32;
+let HIDDEN_COUNT = DEFAULT_HIDDEN_COUNT;   // ajustável no painel (setHiddenCount, em training.js); salvo junto com o treino
 const ACTION_KEYS = ["up", "down", "left", "right", "fire", "special"];   // uma saída para cada tecla
 const OUTPUT_COUNT = ACTION_KEYS.length;
 let pressThreshold = 0.5;   // saída acima disso = tecla apertada (ajustável no painel)
@@ -132,8 +194,8 @@ function createLayer(inputCount, neuronCount) {
 
 function createNetwork() {
     return {
-        hidden: createLayer(INPUT_COUNT, HIDDEN_COUNT),   // 6 neurônios × (11 pesos + 1 bias) = 72 números
-        output: createLayer(HIDDEN_COUNT, OUTPUT_COUNT),  // 6 neurônios × (6 pesos + 1 bias) = 42 números
+        hidden: createLayer(INPUT_COUNT, HIDDEN_COUNT),   // neurônios × (19 pesos + 1 bias)
+        output: createLayer(HIDDEN_COUNT, OUTPUT_COUNT),  // 6 neurônios × (neurônios escondidos + 1 bias)
     };
 }
 
