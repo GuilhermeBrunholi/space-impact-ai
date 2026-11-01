@@ -1,0 +1,265 @@
+/* Painel da IA: fica fixo à direita, por cima da página, e pode ser recolhido */
+#ai-panel, #ai-layout {
+    --panel-bg: #20262e;
+    --panel-line: #3a4552;
+    --panel-fg: #e6ece2;
+    --panel-muted: #8e9aa6;
+    --chart-bg: #151a20;
+    --lcd: #aad69c;
+    --lcd-dim: #4f6b47;
+    --hot: #f0c05a;
+    --bad: #e0736c;
+
+    /* como uma fase terminou */
+    --end-cleared: #aad69c;
+    --end-timeout: #8e9aa6;
+    --end-terrain: #c98a4b;
+    --end-enemy: #e0736c;
+    --end-boss: #b48ae6;
+    --end-shot: #f0c05a;
+}
+#ai-panel {
+    position: fixed;
+    top: 60px;
+    right: 10px;
+    width: 280px;
+    max-height: calc(100vh - 70px);
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-line);
+    border-radius: 8px;
+    color: var(--panel-fg);
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    line-height: 1.15;
+    z-index: 100;
+}
+#ai-panel.collapsed .ai-body { display: none; }
+
+.ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    border-bottom: 2px solid var(--panel-line);
+    font-family: 'Silkscreen', monospace;
+    font-size: 16px;
+    color: var(--lcd);
+}
+.ai-body { display: grid; gap: 12px; padding: 10px; }
+.ai-section { display: grid; gap: 4px; }
+.ai-section h4 {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: var(--panel-muted);
+    margin-bottom: 2px;
+}
+
+#ai-panel button {
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--panel-fg);
+    background: transparent;
+    border: 1px solid var(--panel-line);
+    border-radius: 4px;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+#ai-panel button:hover { border-color: var(--lcd); }
+#ai-panel button:focus-visible, #ai-panel input:focus-visible { outline: 2px solid var(--lcd); outline-offset: 1px; }
+
+.ai-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+#ai-panel .ai-modes button.active,
+#ai-panel .ai-levels button.active,
+#ai-panel #ai-turbo.active { background: var(--lcd); color: #1b2117; border-color: var(--lcd); }
+
+.ai-levels { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 4px; }
+#ai-panel .ai-levels button { padding: 2px 0; }
+
+/* Em telas largas o painel deixa de flutuar e vira uma coluna de verdade, entre o topo e o rodapé.
+   A página fica do tamanho exato da janela: o conteúdo e o painel rolam cada um por dentro, se precisarem.
+   (Flutuando, ele cortava a barra do topo e cobria o fim do rodapé.) */
+@media (min-width: 1200px) {
+    body { height: 100vh; }
+    #app-body { min-height: 0; }
+    #ai-layout { overflow-y: auto; }
+    #ai-panel {
+        position: static;
+        flex: none;
+        width: 300px;
+        max-height: none;
+        margin: 8px 12px 8px 0;
+    }
+    #ai-panel.collapsed { width: auto; align-self: flex-start; }
+}
+
+.ai-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; text-align: center; }
+.ai-stats div { border: 1px solid var(--panel-line); border-radius: 4px; padding: 2px; }
+.ai-stats span { display: block; font-size: 14px; color: var(--panel-muted); }
+.ai-stats strong { font-weight: 400; font-size: 22px; font-variant-numeric: tabular-nums; }
+
+/* linha: rótulo | barra | valor */
+.ai-row { display: grid; grid-template-columns: 112px 1fr 40px; gap: 6px; align-items: center; }
+.ai-row .value { text-align: right; font-variant-numeric: tabular-nums; }
+.ai-bar { position: relative; height: 10px; background: #151a20; border: 1px solid var(--panel-line); border-radius: 2px; }
+.ai-bar .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--lcd-dim); }
+.ai-bar .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--panel-muted); }
+.ai-row.pressed .fill { background: var(--hot); }
+.ai-row.pressed .label { color: var(--hot); }
+.ai-row.flag .fill { background: var(--lcd); }
+
+.ai-param { display: grid; gap: 2px; }
+.ai-param label { display: flex; justify-content: space-between; }
+.ai-param input[type=range] { width: 100%; accent-color: var(--lcd); }
+.ai-param input[type=range]:disabled { opacity: .35; }
+.ai-note { font-size: 15px; color: var(--panel-muted); }
+
+.ai-train-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+/* peso das teclas: nome | slider | valor, uma linha por tecla */
+.ai-key-weights { display: grid; grid-template-columns: 84px 1fr 34px; gap: 0 6px; align-items: center; }
+.ai-key-weights input[type=range] { width: 100%; accent-color: var(--lcd); }
+.ai-key-weights span { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Layout: jogo + telemetria ──
+   Telas estreitas: uma coluna de 840 px (jogo, geração em andamento, gráficos).
+   Telas largas: o jogo à esquerda e os gráficos ocupando o espaço vazio ao lado. */
+#ai-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 840px);
+    justify-content: center;
+    gap: 12px;
+    padding: 8px 16px 24px;
+}
+#ai-game-column, #ai-side-column { display: grid; gap: 10px; align-content: start; min-width: 0; }
+
+/* ── Rodapé: controles, objetivo e botões na tela, numa faixa só ── */
+#game-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 24px;
+    padding: 8px 16px;
+    background: #2b2e32;   /* mesma cor da barra do topo */
+    border-top: 2px solid #3a4552;
+    color: #e6ece2;
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+}
+/* o style.css do jogo posiciona #info e .toggle-container no meio da tela; no rodapé eles só seguem a linha */
+#game-footer #info {
+    position: static;
+    left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 16px;
+}
+#game-footer .toggle-container {
+    position: static;
+    left: auto;
+    transform: none;
+    margin: 0;
+    font-size: 18px;
+    font-weight: 400;
+}
+.footer-label {
+    font-family: 'Silkscreen', monospace;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: #8e9aa6;
+    text-transform: uppercase;
+}
+.footer-control { display: inline-flex; align-items: center; gap: 6px; }
+#game-footer #arrows { width: 28px; }
+#game-footer #space { width: 60px; }
+#game-footer #xKey { width: 20px; }
+.footer-separator { width: 1px; height: 18px; background: #3a4552; }
+#game-footer .toggle:focus-visible { outline: 2px solid #aad69c; outline-offset: 3px; }
+
+/* a página ocupa a altura toda da janela: barra do topo, conteúdo esticando no meio, rodapé colado embaixo */
+body { display: flex; flex-direction: column; min-height: 100vh; }
+#app-body { flex: 1; display: flex; align-items: stretch; }
+#ai-layout { flex: 1; min-width: 0; }
+
+/* Em telas largas o jogo encolhe para 680 px (o canvas continua 840×480 por dentro; só é desenhado menor),
+   os gráficos ganham o resto da largura e esticam para preencher a altura.
+   680 do jogo + ~480 dos gráficos + 300 do painel + margens. */
+@media (min-width: 1500px) {
+    body.ai-panel-open #ai-layout { grid-template-columns: 680px minmax(0, 1fr); }
+    body.ai-panel-open #ai-game-column,
+    body.ai-panel-open #ai-side-column { display: flex; flex-direction: column; }
+    body.ai-panel-open #tl-progress { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
+    body.ai-panel-open #ai-side-column > .tl-card { flex: 4 1 0; }
+    body.ai-panel-open #ai-side-column > .tl-grid { flex: 7 1 0; grid-template-rows: 1fr 1fr; }
+    body.ai-panel-open #ai-side-column .tl-card { display: flex; flex-direction: column; }
+    body.ai-panel-open #ai-side-column .tl-canvas { flex: 1 1 0; height: auto; min-height: 90px; }
+}
+@media (min-width: 1200px) {
+    body:not(.ai-panel-open) #ai-layout { grid-template-columns: 680px minmax(0, 1fr); }
+    body:not(.ai-panel-open) #ai-game-column,
+    body:not(.ai-panel-open) #ai-side-column { display: flex; flex-direction: column; }
+    body:not(.ai-panel-open) #tl-progress { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
+    body:not(.ai-panel-open) #ai-side-column > .tl-card { flex: 4 1 0; }
+    body:not(.ai-panel-open) #ai-side-column > .tl-grid { flex: 7 1 0; grid-template-rows: 1fr 1fr; }
+    body:not(.ai-panel-open) #ai-side-column .tl-card { display: flex; flex-direction: column; }
+    body:not(.ai-panel-open) #ai-side-column .tl-canvas { flex: 1 1 0; height: auto; min-height: 90px; }
+}
+
+.tl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tl-card {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+    min-width: 0;
+    background: var(--panel-bg);
+    border: 2px solid var(--panel-line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--panel-fg);
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    line-height: 1.15;
+}
+.tl-card h4 {
+    font-family: 'Silkscreen', monospace;
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: .06em;
+    color: var(--panel-muted);
+}
+.tl-note { font-size: 15px; color: var(--panel-muted); }
+.tl-key { display: inline-block; width: 12px; height: 8px; margin: 0 4px 1px 6px; border-radius: 2px; vertical-align: middle; }
+.tl-key:first-child { margin-left: 0; }
+
+/* o style.css do jogo centraliza todo canvas (left 50% + translate); os gráficos não querem isso */
+.tl-canvas { display: block; position: static; left: auto; transform: none; width: 100%; height: 130px; background: var(--chart-bg); border-radius: 4px; }
+.tl-canvas.tall { height: 210px; }
+
+.tl-numbers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+.tl-numbers div { border: 1px solid var(--panel-line); border-radius: 4px; padding: 2px; }
+.tl-numbers span { display: block; font-size: 14px; color: var(--panel-muted); }
+.tl-numbers strong { font-weight: 400; font-size: 22px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.tl-ships { display: grid; grid-template-columns: repeat(30, 1fr); gap: 2px; }
+.tl-ships span { height: 10px; border-radius: 2px; background: var(--chart-bg); border: 1px solid var(--panel-line); }
+.tl-ships span.done { background: var(--lcd-dim); border-color: var(--lcd-dim); }
+.tl-ships span.current { background: var(--hot); border-color: var(--hot); }
+
+.tl-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.tl-levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center; margin-top: 4px; }
+.tl-levels div { border: 1px solid var(--panel-line); border-bottom-width: 4px; border-radius: 4px; padding: 2px 0; }
+.tl-levels span { display: block; font-size: 13px; color: var(--panel-muted); }
+.tl-levels strong { font-weight: 400; font-size: 20px; font-variant-numeric: tabular-nums; }
+.tl-levels div.current { border-color: var(--hot); }
+.tl-levels div.current strong { color: var(--hot); }
+#tl-actions { display: grid; gap: 3px; margin-top: 4px; }
+#tl-actions .ai-row { grid-template-columns: 90px 1fr 40px; }
+
+@media (max-width: 760px) {
+    .tl-grid, .tl-columns { grid-template-columns: 1fr; }
+    .tl-numbers { grid-template-columns: repeat(4, 1fr); }
+}

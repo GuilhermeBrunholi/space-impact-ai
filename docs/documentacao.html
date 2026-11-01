@@ -1,0 +1,2173 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body { margin: 0; } [hidden] { display: none !important; }</style>
+<title>Documentação da IA Space Impact</title>
+<!-- Modelo de docs/documentacao.html. Não edite a página gerada: edite os docs/*.md (ou este modelo)
+     e rode  python tools/build_docs.py  — o script troca o marcador DOCS abaixo pelo conteúdo dos .md. -->
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Silkscreen&family=VT323&display=swap">
+<style>
+/* Layout: sumário fixo à esquerda (vira "Sumário" recolhível no celular) + coluna de leitura de ~72ch.
+   Cores do próprio projeto: escuro = Painel da IA; claro = a tela LCD verde do Nokia 3310. */
+:root {
+  --bg: #1a1f23;
+  --surface: #222a30;
+  --surface-2: #2a343b;
+  --line: #36424b;
+  --fg: #e3eadf;
+  --muted: #93a098;
+  --accent: #aad69c;
+  --accent-ink: #18200f;
+  --accent-soft: rgba(170, 214, 156, .12);
+  --hot: #f0c05a;
+  --code-bg: #151a1e;
+  --font-display: 'Silkscreen', 'Courier New', monospace;
+  --font-body: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+  --font-data: 'VT323', 'Consolas', monospace;
+  --font-code: 'Consolas', 'SFMono-Regular', 'Menlo', monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e3ebd8; --surface: #edf3e6; --surface-2: #d6e2c8; --line: #b5c6a5;
+    --fg: #1d2818; --muted: #56654b; --accent: #3d6a2f; --accent-ink: #eef4e8;
+    --accent-soft: rgba(61, 106, 47, .1); --hot: #9a6a0c; --code-bg: #f4f8ef;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #e3ebd8; --surface: #edf3e6; --surface-2: #d6e2c8; --line: #b5c6a5;
+  --fg: #1d2818; --muted: #56654b; --accent: #3d6a2f; --accent-ink: #eef4e8;
+  --accent-soft: rgba(61, 106, 47, .1); --hot: #9a6a0c; --code-bg: #f4f8ef;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 16px; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16.5px;
+  line-height: 1.65;
+}
+.shell {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ── Sumário ── */
+.toc {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-block: 28px;
+  display: grid;
+  gap: 14px;
+}
+.toc .brand { font-family: var(--font-display); font-size: 15px; color: var(--accent); line-height: 1.3; }
+.toc .brand small { display: block; font-family: var(--font-data); font-size: 18px; color: var(--muted); letter-spacing: .04em; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.toc a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 14.5px;
+  line-height: 1.35;
+}
+.toc a:hover { background: var(--surface); }
+.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.toc .num { font-family: var(--font-data); font-size: 17px; color: var(--muted); margin-right: 6px; }
+.toc a.current { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.toc .subs { padding-left: 14px; border-left: 1px solid var(--line); margin: 2px 0 6px 18px; }
+.toc .subs[hidden] { display: none; }
+.toc .subs a { font-size: 13.5px; color: var(--muted); padding: 3px 8px; }
+.toc .subs a.current { color: var(--fg); background: transparent; font-weight: 700; }
+.toc-mobile { display: none; }
+
+/* ── Conteúdo ── */
+main { min-width: 0; padding-block: 28px 80px; }
+.cover {
+  padding-block: 8px 28px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+  display: grid;
+  gap: 12px;
+  max-width: 72ch;
+}
+.cover .eyebrow { font-family: var(--font-data); font-size: 20px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.cover h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 5vw, 44px); line-height: 1.12; margin: 0; text-wrap: balance; }
+.cover p { margin: 0; font-size: 18px; }
+.cover .facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cover .facts span {
+  font-family: var(--font-data); font-size: 20px; line-height: 1;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface);
+}
+.cover .facts b { color: var(--accent); font-weight: 400; }
+
+.doc { max-width: 76ch; padding-block: 36px 12px; border-bottom: 1px dashed var(--line); }
+.doc:last-child { border-bottom: none; }
+.doc > * + * { margin-top: 14px; }
+.doc h1, .doc h2, .doc h3, .doc h4 { font-weight: 400; text-wrap: balance; line-height: 1.2; scroll-margin-top: 16px; }
+.doc h1 { font-family: var(--font-display); font-size: clamp(22px, 3.6vw, 30px); color: var(--accent); margin: 0 0 6px; }
+.doc h2 { font-family: var(--font-display); font-size: 18px; margin-top: 34px; letter-spacing: .01em; }
+.doc h3 { font-family: var(--font-body); font-weight: 700; font-size: 17px; margin-top: 24px; }
+.doc h4 { font-family: var(--font-body); font-weight: 700; font-size: 16px; color: var(--muted); }
+.doc .anchor { margin-left: 8px; font-family: var(--font-data); color: var(--muted); text-decoration: none; opacity: 0; }
+.doc :is(h1, h2, h3):hover .anchor, .doc .anchor:focus-visible { opacity: 1; }
+.doc p, .doc li { max-width: 72ch; }
+.doc ul, .doc ol { padding-left: 1.4em; }
+.doc li + li { margin-top: 4px; }
+.doc li > ul, .doc li > ol { margin-top: 4px; }
+.doc a { color: var(--accent); text-underline-offset: 2px; }
+.doc strong { font-weight: 700; }
+.doc hr { border: none; border-top: 1px solid var(--line); margin-block: 28px; }
+.doc blockquote { margin: 0; padding: 8px 16px; border-left: 3px solid var(--hot); background: var(--surface); }
+.doc :not(pre) > code {
+  font-family: var(--font-code);
+  font-size: .86em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+.doc pre {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--code-bg);
+  overflow-x: auto;
+  font-family: var(--font-code);
+  font-size: 13.5px;
+  line-height: 1.55;
+  max-width: 100%;
+}
+.doc pre code { font-family: inherit; background: none; padding: 0; white-space: pre; }
+.doc pre.mermaid { background: var(--surface); text-align: center; font-family: var(--font-body); }
+.doc pre.mermaid svg { max-width: 100%; height: auto; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; max-width: 100%; }
+.doc table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.45; }
+.doc th, .doc td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.doc thead th { background: var(--surface); font-family: var(--font-data); font-size: 18px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+.doc tbody tr:last-child td { border-bottom: none; }
+.doc td code { white-space: nowrap; }
+
+.loading { color: var(--muted); font-family: var(--font-data); font-size: 20px; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .toc { display: none; }
+  .toc-mobile {
+    display: block;
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding-block: 10px;
+  }
+  .toc-mobile summary { cursor: pointer; font-family: var(--font-display); font-size: 14px; color: var(--accent); }
+  .toc-mobile ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; max-height: 60vh; overflow-y: auto; }
+  .toc-mobile a { display: block; padding: 6px 4px; color: var(--fg); text-decoration: none; font-size: 15px; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+
+
+<div class="shell">
+  <nav class="toc" aria-label="Sumário">
+    <div class="brand">Space Impact IA<small>documentação do projeto</small></div>
+    <ol id="toc-list"></ol>
+  </nav>
+  <main>
+    <details class="toc-mobile">
+      <summary>Sumário</summary>
+      <ol id="toc-mobile-list"></ol>
+    </details>
+    <header class="cover">
+      <span class="eyebrow">Space-Impact-Web · neuroevolução</span>
+      <h1>Documentação da IA que aprende a jogar Space Impact</h1>
+      <p>Dos sensores à evolução das redes neurais, o treino, a telemetria e o diário de cada decisão tomada pelo caminho. Gerada a partir dos arquivos <code>docs/*.md</code> do projeto.</p>
+      <div class="facts">
+        <span><b>11</b> entradas</span>
+        <span><b>6</b> teclas</span>
+        <span><b>114</b> pesos</span>
+        <span><b>30</b> naves por geração</span>
+        <span><b>8</b> fases por nave</span>
+        <span>nota de <b>0 a 8</b></span>
+      </div>
+    </header>
+    <div id="docs"><p class="loading">Carregando a documentação…</p></div>
+  </main>
+</div>
+
+<script type="text/markdown" data-key="inicio" data-file="README.md">
+# Documentação — IA jogando Space Impact
+
+Esta pasta explica **tudo** o que foi construído em cima do jogo original para colocar uma inteligência artificial
+para jogar Space Impact: dos sensores até a evolução das redes neurais, o treino, a telemetria e as decisões tomadas
+pelo caminho (inclusive os erros e como foram descobertos).
+
+O jogo em si (`game.js`, `style.css`, imagens) é o projeto original e **não foi modificado**. Toda a IA vive em
+arquivos próprios que leem e controlam o jogo "por fora".
+
+## Versão em HTML
+
+Toda esta documentação também existe como **uma página só**, com sumário lateral e os diagramas desenhados:
+[`docs/documentacao.html`](documentacao.html). Com o servidor rodando, abra
+**http://localhost:8000/docs/documentacao.html** (ou dê dois cliques no arquivo; precisa de internet para as
+fontes e o conversor de Markdown).
+
+A página é **gerada** a partir destes `.md`. Depois de editar qualquer documento, gere de novo:
+
+```bash
+python tools/build_docs.py
+```
+
+## Por onde começar
+
+| Se você quer… | Leia |
+|---|---|
+| Entender a ideia geral e como os arquivos se encaixam | [01 — Visão geral e arquitetura](01-visao-geral.md) |
+| Saber que tipo de IA é esta (e o que ela não é) | [01 — Que tipo de IA é esta](01-visao-geral.md#que-tipo-de-ia-é-esta) |
+| Rodar o projeto (navegador, VS Code, servidor) | [02 — Como rodar](02-como-rodar.md) |
+| Saber o que a IA "vê" e o que ela consegue "fazer" | [03 — Sensores e ações](03-sensores-e-acoes.md) |
+| Entender a rede neural (contas, pesos, saídas) | [04 — Rede neural](04-rede-neural.md) |
+| Entender como as redes aprendem (algoritmo genético) | [05 — Neuroevolução](05-neuroevolucao.md) |
+| Entender o treino: partidas, nota, turbo, reinício do jogo | [06 — Treino](06-treino.md) |
+| Saber onde e como o treino é salvo | [07 — Salvar e carregar](07-persistencia.md) |
+| Usar o painel e ler os gráficos | [08 — Painel e telemetria](08-painel-e-telemetria.md) |
+| Ver os problemas encontrados e por que cada decisão foi tomada | [09 — Diário de decisões](09-diario-de-decisoes.md) |
+| Consultar uma função específica | [10 — Referência do código](10-referencia-do-codigo.md) |
+| Relembrar um termo | [Glossário](glossario.md) |
+
+## Resumo em uma página
+
+```mermaid
+flowchart LR
+    G["game.js<br/>(o jogo original)"] -->|estado: posições, vidas, pontos| S["Sensores<br/>getState() + getInputs()"]
+    S -->|11 números entre 0 e 1| N["Rede neural<br/>11 → 6 → 6"]
+    N -->|6 valores entre 0 e 1| A["Atuadores<br/>act()"]
+    A -->|setas, tiro, especial| G
+    T["Treino<br/>(training.js)"] -->|nota de cada nave| E["Evolução<br/>(evolution.js)"]
+    E -->|nova geração de redes| N
+    T <-->|training.json| P["server.py"]
+```
+
+1. **Sensores** — a cada frame, o estado do jogo vira **11 números entre 0 e 1** (altura e posição da nave,
+   tiro e inimigo mais próximos, munição especial, espaço livre acima e abaixo).
+2. **Rede neural** — 11 entradas → 6 neurônios escondidos → **6 saídas** (cima, baixo, esquerda, direita, tiro,
+   especial). Saída acima do limite = tecla apertada.
+3. **Neuroevolução** — 30 redes jogam; as melhores são copiadas, cruzadas e mutadas para formar a próxima geração.
+   Ninguém escreve regras: o comportamento surge da seleção.
+4. **Treino** — cada nave joga **as 8 fases**, cada uma do zero. A nota soma, em cada fase, `pontos ÷ recorde da fase`
+   (cada fase vale até 1, o total vai de 0 a 8).
+5. **Telemetria** — painel embaixo do jogo e ao lado com a rede ao vivo, evolução da nota, mapa de calor por fase,
+   o que matou as naves e as notas da geração.
+
+## Arquivos do projeto
+
+| Arquivo | Papel |
+|---|---|
+| `game.js` | O jogo original (não modificado) |
+| `brain-rules.js` | Cérebro de regras escritas à mão — a "régua" para comparar com a rede |
+| `brain-nn.js` | Entradas normalizadas e a rede neural |
+| `evolution.js` | Algoritmo genético: genoma, seleção, cruzamento, mutação, limite e conserto de pesos |
+| `training.js` | Ciclo do treino, nota, turbo, reinício do jogo, salvar/carregar |
+| `ai.js` | Sensores (`getState`), atuadores (`act`) e o loop da IA |
+| `ai-panel.js` / `ai-panel.css` | Painel de controle à direita e todo o layout da página |
+| `ai-telemetry.js` | Telemetria: progresso da geração, rede ao vivo e gráficos |
+| `server.py` | Servidor local que serve o jogo e grava o treino em `training-data/` |
+| `.vscode/` | Configuração para rodar com F5 no VS Code |
+| `tools/` | `build_docs.py` e o modelo da página que geram `docs/documentacao.html` |
+| `training-data/` | Treino salvo (`training.json`, `best-network.json`) e backups |
+
+</script>
+<script type="text/markdown" data-key="01-visao-geral" data-file="01-visao-geral.md">
+# 01 — Visão geral e arquitetura
+
+## A ideia
+
+O objetivo do projeto é estudar inteligência artificial colocando uma IA para jogar Space Impact, o jogo de nave do
+Nokia 3310 (esta é a versão web de [sidsinr/Space-Impact-Web](https://github.com/sidsinr/Space-Impact-Web)).
+
+A abordagem escolhida foi a de um **agente**: um programa que, a cada instante,
+
+1. **observa** o ambiente (sensores),
+2. **decide** o que fazer (cérebro),
+3. **age** sobre o ambiente (atuadores).
+
+O cérebro passou por duas fases:
+
+| Fase | Cérebro | Arquivo | É "inteligência"? |
+|---|---|---|---|
+| 1 | Regras escritas à mão (`if` inimigo na frente, desvia) | `brain-rules.js` | Não aprende: faz exatamente o que foi programado |
+| 2 | Rede neural cujos pesos são **descobertos pela evolução** | `brain-nn.js` + `evolution.js` | Sim: ninguém escreve o comportamento, ele surge do treino |
+
+O cérebro de regras continua no projeto como **régua**: dá para trocar de cérebro no painel e comparar.
+
+## Que tipo de IA é esta
+
+Em uma frase: um **agente reativo** controlado por um **perceptron multicamadas**, treinado por **neuroevolução** num
+problema de **aprendizado por reforço**.
+
+| Pergunta | Resposta |
+|---|---|
+| Que cérebro? | **Perceptron multicamadas**: rede neural *feedforward* (a informação só anda para frente), uma camada escondida, ativação sigmoide — 11 → 6 → 6, 114 pesos |
+| Como aprende? | **Algoritmo genético** (computação evolutiva): população de 30, torneio, cruzamento, mutação, elitismo |
+| Que problema? | **Aprendizado por reforço**: não há gabarito de qual tecla era a certa, só uma recompensa no fim (os pontos). Resolvido por **busca direta da política**: testa cérebros inteiros e fica com os que pontuam mais |
+| Que agente? | **Reativo e determinístico**: decide só pelo que vê no frame atual, sem memória, sempre igual para a mesma situação |
+| Que formato? | **Topologia fixa**: a evolução ajusta só os pesos, nunca o desenho da rede (variantes como o NEAT também evoluem a estrutura) |
+
+Onde ela fica no mapa da IA:
+
+```
+Inteligência artificial
+├── IA simbólica (regras escritas à mão) ............ brain-rules.js
+└── Aprendizado de máquina
+    ├── Supervisionado (exemplos com gabarito)
+    ├── Não supervisionado (padrões sem gabarito)
+    └── Por reforço (só uma recompensa)
+        ├── Por gradiente: Q-learning, DQN, PPO
+        └── Busca direta da política
+            └── Neuroevolução ............................ brain-nn.js + evolution.js
+```
+
+O que ela **não** é:
+
+- **Não é supervisionada:** ninguém mostrou exemplos de jogada certa, por isso não há *backpropagation*.
+- **Não é deep learning:** a rede é rasa (uma camada escondida com 6 neurônios); redes profundas têm muitas camadas e
+  milhares ou milhões de pesos.
+- **Não é IA generativa:** não gera texto nem imagem como o ChatGPT ou o Claude; transforma 11 números em 6 teclas.
+- **Não é aprendizado por reforço "clássico":** Q-learning, DQN e PPO aprendem a cada jogada, com gradiente; a
+  neuroevolução só olha a nota final de cada nave.
+
+| Tipo | Aprende sozinho? | Precisa de gabarito? | Tamanho típico | Exemplo |
+|---|---|---|---|---|
+| Sistema de regras | não | não | alguns `if` | `brain-rules.js` |
+| **Neuroevolução (este projeto)** | sim | não, só a nota | 114 pesos | `brain-nn.js` + `evolution.js` |
+| Reforço com gradiente | sim | não, só a recompensa | milhares a milhões | DQN jogando Atari |
+| Supervisionado | sim | sim | milhares a milhões | reconhecer dígitos escritos à mão |
+| IA generativa (LLM) | sim | sim, prever a próxima palavra | bilhões | ChatGPT, Claude |
+
+## Princípio: o jogo não é modificado
+
+`game.js` é o jogo original e permanece intacto. A IA o controla **por fora**, do mesmo jeito que um humano:
+
+- **lê** variáveis globais que o jogo já expõe (`currentLevel`, `lives`, `playerScore`, `specialCount`…);
+- **escreve** no mesmo objeto `keys` que o teclado escreve (`keys.ArrowUp.pressed = true`);
+- **cria tiros** do mesmo jeito que o `keydown` da barra de espaço cria (`new Projectile(true, player)`).
+
+As poucas vezes em que foi preciso interferir no comportamento do jogo, isso foi feito **de fora**, sem editar o
+arquivo — por exemplo, envolvendo `Level.prototype.playerDead` para descobrir a causa de cada morte
+(ver [06 — Treino](06-treino.md#como-uma-fase-termina-e-o-que-matou)).
+
+## O ciclo de um frame
+
+O jogo roda a 60 quadros por segundo com `requestAnimationFrame`. Existem **dois loops** na página:
+
+```mermaid
+sequenceDiagram
+    participant Tela as requestAnimationFrame
+    participant Jogo as animate() — game.js
+    participant IA as aiLoop() — ai.js
+    Tela->>Jogo: frame N
+    Jogo->>Jogo: currentLevel.update(deltaTime)<br/>move nave conforme keys, inimigos, colisões, desenha
+    Tela->>IA: frame N
+    IA->>IA: getState() → cérebro → act()<br/>atualiza keys e cria tiros
+    Note over Jogo,IA: as teclas escolhidas no frame N movem a nave no frame N+1
+```
+
+- `animate()` (do jogo) atualiza e desenha a fase uma vez por quadro da tela.
+- `aiLoop()` (da IA) roda logo depois e decide as teclas do próximo frame.
+- Durante o **treino**, `aiLoop()` chama `runTrainingFrame()`, que roda **vários frames do jogo por quadro da tela**
+  (o jogo acelerado). Ver [06 — Treino](06-treino.md#velocidade-e-turbo).
+
+## Quem controla a nave
+
+O painel tem três modos (`brainMode` em `ai.js`):
+
+| Modo | Valor | O que acontece |
+|---|---|---|
+| Você | `"human"` | A IA não mexe em nada; o teclado controla |
+| Regras | `"rules"` | `decide(state)` de `brain-rules.js` escolhe as teclas |
+| Rede | `"nn"` | `nnDecide(state, network)` de `brain-nn.js` escolhe as teclas (é o único modo que treina) |
+
+## Ordem de carregamento dos scripts
+
+A página não usa módulos nem bundler: são scripts clássicos que compartilham variáveis globais. Por isso a **ordem**
+em `index.html` importa — cada arquivo só pode usar o que foi carregado antes dele (ou usar dentro de funções
+chamadas depois).
+
+```html
+<script src="game.js"><\/script>          <!-- o jogo: Level, Player, keys, currentLevel, enemiesLvl1..8 -->
+<script src="brain-rules.js"><\/script>   <!-- decide(), isThreat() -->
+<script src="brain-nn.js"><\/script>      <!-- getInputs(), createNetwork(), predict(), nnDecide(), actionWeights -->
+<script src="evolution.js"><\/script>     <!-- genomas, seleção, cruzamento, mutação, WEIGHT_LIMIT, conserto -->
+<script src="training.js"><\/script>      <!-- training, resetGame(), nota, turbo, salvar/carregar -->
+<script src="ai.js"><\/script>            <!-- getState(), act(), aiStep(), aiLoop() — começa o loop -->
+<script src="ai-panel.js"><\/script>      <!-- painel de controle -->
+<script src="ai-telemetry.js"><\/script>  <!-- telemetria -->
+```
+
+Detalhes que dependem dessa ordem:
+
+- `training.js` tira uma **cópia intacta** de todas as ondas de inimigos (`pristineWaves`) assim que carrega — antes
+  de qualquer partida alterá-las.
+- `training.js` também envolve `Level.prototype.playerDead` assim que carrega.
+- `ai.js` cria a primeira rede (`createNetwork()`) e dispara `aiLoop()`.
+- `ai-panel.js` e `ai-telemetry.js` montam a interface por último, quando todo o resto já existe.
+
+## Mapa dos arquivos
+
+```mermaid
+flowchart TB
+    subgraph Jogo original
+        game[game.js]
+    end
+    subgraph Cérebros
+        rules[brain-rules.js]
+        nn[brain-nn.js]
+    end
+    subgraph Aprendizado
+        evo[evolution.js]
+        train[training.js]
+    end
+    subgraph Agente
+        ai[ai.js]
+    end
+    subgraph Interface
+        panel[ai-panel.js + ai-panel.css]
+        tele[ai-telemetry.js]
+    end
+    server[server.py] --- data[(training-data/)]
+
+    ai -->|lê estado, escreve keys| game
+    ai --> rules
+    ai --> nn
+    train -->|resetGame, update| game
+    train --> evo
+    evo --> nn
+    train <-->|HTTP /api/training| server
+    panel --> train
+    panel --> ai
+    tele --> train
+    tele --> nn
+```
+
+## Layout da página
+
+Em telas largas (a partir de 1200 px) a página ocupa exatamente a altura da janela:
+
+```
+┌──────────────────────────── barra do topo ─────────────────────────────┐
+│ jogo (680 px)            │ rede neural ao vivo             │ Painel da │
+│                          │─────────────────┬───────────────│ IA        │
+│ treino · geração em      │ evolução da nota│ pontuação/fase│ (rola por │
+│ andamento                │─────────────────┼───────────────│ dentro)   │
+│                          │ o que matou     │ notas geração │           │
+└──────────── rodapé: controles · objetivo · botões na tela ─────────────┘
+```
+
+Detalhes em [08 — Painel e telemetria](08-painel-e-telemetria.md#layout).
+
+</script>
+<script type="text/markdown" data-key="02-como-rodar" data-file="02-como-rodar.md">
+# 02 — Como rodar
+
+## Requisitos
+
+- **Python 3** no PATH como `python` (testado com 3.10). Só a biblioteca padrão — nada para instalar.
+- Um navegador moderno (Edge ou Chrome; a telemetria usa recursos de CSS e canvas atuais).
+
+## Por que precisa de um servidor
+
+Abrir o `index.html` direto (`file://`) até mostra a página, mas:
+
+1. o navegador bloqueia algumas coisas em `file://`;
+2. **o treino precisa ser gravado num arquivo**, e uma página web não consegue escrever no disco sozinha.
+
+O `server.py` resolve os dois: serve os arquivos do jogo e oferece uma pequena API para gravar o treino em
+`training-data/`. Detalhes em [07 — Salvar e carregar](07-persistencia.md).
+
+## Opção 1 — terminal
+
+```bash
+python server.py
+```
+
+Abra **http://localhost:8000**. Para parar: `Ctrl+C` no terminal.
+
+Se a porta 8000 já estiver em uso (por exemplo, o servidor já está aberto em outro terminal), ele avisa
+`(o servidor já estava rodando)` e encerra sem erro — basta abrir o endereço.
+
+## Opção 2 — VS Code (recomendado)
+
+O projeto vem com `.vscode/tasks.json` e `.vscode/launch.json`.
+
+| Atalho | O que faz |
+|---|---|
+| **F5** → "Jogar (Edge)" ou "Jogar (Chrome)" | Sobe o `server.py` num terminal e abre o jogo **conectado ao depurador** |
+| **Ctrl+Shift+B** | Só sobe o servidor |
+
+Com o depurador conectado dá para colocar **breakpoints nos arquivos `.js`** (clique à esquerda do número da linha).
+Lugares bons para estudar a IA:
+
+- `nnDecide()` em `brain-nn.js` — ver as entradas e as saídas da rede num frame;
+- `endGeneration()` em `training.js` — ver as notas da geração antes da evolução;
+- `nextGeneration()` em `evolution.js` — ver seleção, cruzamento e mutação acontecendo.
+
+Como funciona por baixo:
+
+- a tarefa **"Servidor Space Impact"** roda `python server.py` em segundo plano;
+- um *problem matcher* espera a linha `Space Impact em http…` aparecer no terminal para saber que o servidor subiu
+  (por isso o `server.py` imprime com `flush=True` — sem isso a linha ficaria presa no buffer e o VS Code esperaria
+  para sempre);
+- as configurações de `launch.json` usam essa tarefa como `preLaunchTask` e abrem `http://localhost:8000`.
+
+O servidor **continua rodando** depois de fechar o navegador. Para parar: `Ctrl+C` no terminal
+"Servidor Space Impact" ou o ícone de lixeira do terminal.
+
+## Primeiro uso — roteiro rápido
+
+1. Abra o jogo. A coluna da direita é o **Painel da IA**.
+2. Em **Quem controla**, clique em **Regras** e depois em **Play** no jogo: o cérebro de regras joga.
+3. Clique em **Rede**: uma rede aleatória (ou a do treino salvo) joga.
+4. Clique em **Iniciar treino** e ligue o **Turbo**. Acompanhe a telemetria:
+   - "Treino · geração em andamento" mostra a nave e a fase atuais e a previsão de fim da geração;
+   - a cada geração completa, os gráficos ganham uma coluna/ponto novo.
+5. Depois de algumas gerações, **Pausar treino** e **Assistir a melhor**.
+
+Mantenha a aba **visível** enquanto treina: navegadores quase congelam abas escondidas (`requestAnimationFrame`
+desacelera para ~1 quadro por segundo), e o treino cai junto.
+
+## Atalhos de teclado do jogo
+
+| Tecla | Ação |
+|---|---|
+| Setas | Mover |
+| Espaço | Tiro |
+| X | Arma especial |
+
+Os sliders do painel funcionam só com o mouse: o jogo chama `preventDefault()` em toda tecla de seta/espaço.
+
+</script>
+<script type="text/markdown" data-key="03-sensores-e-acoes" data-file="03-sensores-e-acoes.md">
+# 03 — Sensores e ações
+
+Este documento explica o que a IA **enxerga** e o que ela **consegue fazer**. É a parte mais importante de todo
+o projeto: uma rede neural só aprende o que estiver nas entradas dela. Se a informação não chega, nenhum treino
+resolve — foi exatamente o que aconteceu com o terreno das fases 5 e 6 (ver
+[09 — Diário de decisões](09-diario-de-decisoes.md#fases-5-e-6-a-rede-não-enxergava-o-terreno)).
+
+## Fatos do jogo que os sensores usam
+
+| Fato | Valor | Onde está no `game.js` |
+|---|---|---|
+| Tamanho da tela | 840 × 480 px | `mainCanvas.width/height` |
+| Tamanho da nave | 100 × 70 px | `Player` (`width`, `height`) |
+| Área que colide da nave (hitbox) | 90 × 50 px, 10 px abaixo do topo | `new Hitbox(x, y, width − 10, height − 20, 0, 10)` |
+| Velocidade da nave | 2,5 px/frame na horizontal, 3 px/frame na vertical | `Player.speedX`, `speedY` |
+| Limites da nave | `y` de 50 (abaixo do placar) a 410 (480 − 70); `x` de 0 a 740 (840 − 100) | `Player.update` |
+| Posição de qualquer objeto | `x`, `y` = **canto superior esquerdo**; tamanho em `width`, `height` | todas as classes |
+| `spriteSize` | só o recorte da imagem na folha de sprites — **não** é o tamanho no jogo | |
+
+Convenções de velocidade (cada classe do jogo tem a sua):
+
+| Objeto | Campo | Movimento |
+|---|---|---|
+| `Projectile` (tiro comum) | `speed` | `x += speed` (negativo = para a esquerda) |
+| `EnemyMissile` (míssil teleguiado) | `speedX`, `speedY` | `x -= speedX` |
+| Inimigos | `speedX` | `x -= speedX` |
+
+Nos sensores tudo é convertido para uma convenção só: **`vx` negativo = indo para a esquerda**.
+
+## Camada 1 — `getState()` (ai.js)
+
+Lê o jogo e devolve um objeto "limpo", sem referências às classes do jogo:
+
+```js
+{
+  player: { x, y, width, height, hitbox: { y, height } },
+  lives, score, specialCount, specialType,         // globais do jogo
+  enemies:          [{ x, y, width, height, vx, movement }],
+  enemyProjectiles: [{ x, y, width, height, vx, vy, homing }],
+  terrain:          [{ x, y, width, height }],     // hitboxes do cenário (chão, teto, pilares)
+}
+```
+
+- `enemies` inclui os **chefes** (Boss1–8, até 380 × 380 px) — eles vivem em `currentLevel.enemies` como os outros.
+- `enemyProjectiles` mistura `EnemyMissile` (`homing: true`) e tiros comuns de inimigos (`Projectile`).
+- `terrain` vem de `currentLevel.background[].hitbox[]`. **Encostar no terreno mata, mesmo com escudo.**
+
+O `getState()` é usado tanto pelo cérebro de regras (que trabalha com pixels) quanto pela rede (que precisa de
+números normalizados — próxima camada).
+
+## Camada 2 — `getInputs(state)` (brain-nn.js)
+
+Transforma o estado numa **lista fixa de 11 números entre 0 e 1**. Fixa porque a rede tem exatamente 11 entradas:
+se um número faltar (por exemplo, quando não há tiros na tela), tudo desalinha.
+
+| # | Nome no painel | Como é calculado | 0 significa | 1 significa |
+|---|---|---|---|---|
+| 0 | Altura nave | `normalize(y, 50, 410)` | topo | base |
+| 1 | Horizontal nave | `normalize(x, 0, 740)` | borda esquerda | borda direita |
+| 2 | Existe tiro? | 1 se há tiro inimigo à frente | não há | há |
+| 3 | Dist. tiro | distância horizontal até o tiro mais próximo | colado | longe |
+| 4 | Altura tiro | diferença vertical entre os centros | tiro bem acima | tiro bem abaixo (0,5 = alinhado) |
+| 5 | Existe inimigo? | 1 se há inimigo à frente | não há | há |
+| 6 | Dist. inimigo | igual ao 3, para inimigos | colado | longe |
+| 7 | Altura inimigo | igual ao 4, para inimigos | inimigo bem acima | bem abaixo |
+| 8 | Tem especial? | `specialCount > 0` | sem munição especial | tem |
+| 9 | Espaço acima | espaço livre até o teto | encostando no teto | 150 px ou mais livres |
+| 10 | Espaço abaixo | espaço livre até o chão | encostando no chão | 150 px ou mais livres |
+
+### Normalização
+
+```js
+function normalize(value, min, max) {
+    return Math.min(1, Math.max(0, (value - min) / (max - min)));   // min-max, preso entre 0 e 1
+}
+```
+
+Por que normalizar: os pesos da rede multiplicam as entradas. Se uma entrada vai de 0 a 740 e outra de 0 a 1, a
+primeira domina tudo. Com todas entre 0 e 1, cada entrada começa com a mesma chance de influenciar.
+
+O **método** usado para achar o `min` e o `max` de cada entrada (e que vale para qualquer sensor novo):
+
+1. ler no código onde o jogo limita aquele valor;
+2. registrar (`console.log`) o valor real nos extremos, jogando;
+3. comparar teoria e medição;
+4. normalizar e conferir que o resultado fica perto de 0 e de 1 nos extremos.
+
+Exemplo real: a altura da nave. A primeira tentativa dividia por 480 (a altura da tela) e o máximo medido era 0,86.
+Por quê? A nave tem 70 px de altura e `y` é o **topo** dela, então o maior `y` possível é 480 − 70 = 410. E o menor
+não é 0, é 50 (o placar ocupa o topo). Com `normalize(y, 50, 410)` os extremos medidos ficaram em −0,003 e 1,006 —
+a pequena sobra é o jogo deixando passar 1 frame antes de travar, e o `Math.min/max` cuida disso.
+
+### `describeNearest()` — tiros e inimigos
+
+A mesma receita serve para tiros (entradas 2–4) e inimigos (5–7):
+
+1. **Filtra** os objetos que ainda importam: `obj.x + obj.width >= player.x` (ainda não passaram totalmente pela
+   nave) e `obj.x < 840` (já entraram na tela — inimigos nascem fora da tela, em x até 2280).
+2. Se não sobrou nenhum, devolve `[0, 1, 0.5]`: **existe = 0**, e os outros dois são só preenchimento.
+3. Senão pega o **mais próximo em x** e calcula:
+   - distância = `nearest.x − (player.x + player.width)` (da ponta da nave até o objeto), normalizada entre
+     `−(maior largura do objeto + 100)` (objeto quase saindo pela traseira) e `740` (nave na esquerda, objeto na
+     borda direita). A maior largura é 50 para tiros (`EnemyMissile`) e 380 para inimigos (Boss8);
+   - diferença vertical entre os **centros**, normalizada entre `−395` e `+395` (`480 − (50 + 35)`).
+
+Por que a entrada "existe?": sem ela, "não há inimigo" virava `[1, 0.5]` = "inimigo longe e alinhado", que é uma
+situação real e diferente. A flag avisa a rede para ignorar os outros dois números.
+
+Por que posição **relativa** e não absoluta: a rede precisa saber "o inimigo está acima de mim", não "o inimigo está
+em y = 230". A posição absoluta da nave já entra nas entradas 0 e 1.
+
+### `describeTerrain()` — espaço acima e abaixo
+
+Olha a **faixa** que vai da traseira da nave até 150 px à frente da ponta (`TERRAIN_LOOKAHEAD`). Para cada bloco de
+terreno nessa faixa:
+
+- se o centro do bloco está **acima** do centro da hitbox da nave → é **teto**: o teto fica na base do bloco;
+- senão → é **chão**: o chão fica no topo do bloco (um pilar logo à frente conta como chão alto).
+
+Sem terreno, o teto é o limite da área de jogo (50) e o chão é a borda da tela (480). O resultado é o espaço livre
+entre a **hitbox** da nave e o teto/chão, normalizado entre 0 e 150 px (`TERRAIN_RANGE`): mais longe que 150 px é
+"bastante espaço" e vale 1.
+
+Exemplos medidos logo após o início de cada fase:
+
+| Fase | Espaço acima | Espaço abaixo | Por quê |
+|---|---|---|---|
+| 1 | 1,00 | 1,00 | sem terreno |
+| 3 | 1,00 | 0,93 | chão com pilares |
+| 5 | **0,10** | 1,00 | teto a só 15 px da nave |
+| 6 | 0,90 | 1,00 | teto mais alto no começo |
+| 7 | 1,00 | 1,00 | chão em y = 430, a 150 px |
+
+## Camada 3 — ações e `act(action)` (ai.js)
+
+Todo cérebro devolve o mesmo formato:
+
+```js
+{ up, down, left, right, fire, special }   // true = tecla apertada neste frame
+```
+
+`act()` aplica a ação:
+
+| Ação | Como é aplicada | Restrições |
+|---|---|---|
+| `up`, `down`, `left`, `right` | escreve em `keys.ArrowUp.pressed` etc. — o `Player.update` do jogo lê isso e move a nave | `up` + `down` juntos **se anulam** (sobe 3 e desce 3 no mesmo frame) |
+| `fire` | cria `new Projectile(true, player)` direto, como o `keydown` da barra de espaço | no máximo 1 tiro a cada `fireCooldown` (200 ms) |
+| `special` | cria `Missile`, `Laser` ou `Wall` conforme `specialAtttack`, e desconta `specialCount` | precisa ter munição; no máximo 1 a cada `specialCooldown` (1000 ms) |
+
+### Por que os intervalos (cooldowns)
+
+O tiro no jogo original só acontece no **`keydown`** — um humano precisa soltar e apertar de novo. A rede, se pudesse,
+apertaria a cada frame e criaria **60 tiros por segundo**: um "tiro infinito" que nenhum humano consegue e que
+estraga o aprendizado (ela ganharia sem precisar mirar). Isso é um exemplo de *reward hacking* — a IA explora uma
+brecha em vez de aprender a jogar.
+
+O intervalo fica no `act()`, e não no cérebro, para valer **para qualquer cérebro** (regras ou rede).
+
+### Por que contar o tempo em frames
+
+`aiFrame` conta frames do jogo, e o intervalo é `(aiFrame − lastFireFrame) × 16,7 ms`. Se fosse medido no relógio
+(`performance.now()`), o treino acelerado — que roda dezenas de frames do jogo em poucos milissegundos reais —
+dispararia muito menos do que deveria. Em frames, 200 ms de jogo são sempre 12 frames, em qualquer velocidade.
+
+### Fim de fase: a IA solta tudo
+
+Quando o chefe morre, o próprio jogo assume a nave e faz uma animação até a borda direita (sobe até o topo e anda
+para a direita; nas fases 5 e 6 desce em vez de subir); só então a fase seguinte começa. Se a IA segurasse uma seta contra essa animação, a nave nunca chegaria lá. Por isso `aiStep()` faz:
+
+```js
+if (currentLevel.levelComplete) { act(RELEASE_ALL); return RELEASE_ALL; }
+```
+
+## O cérebro de regras (brain-rules.js)
+
+Para comparação, o cérebro escrito à mão:
+
+- **sempre atira**;
+- procura **ameaças**: inimigos que se sobrepõem verticalmente à nave (`sameRow`), estão à frente (`ahead`) e a
+  menos de 250 px (`DANGER_DIST`);
+- pega a ameaça mais próxima e move a nave para cima ou para baixo conforme o centro da ameaça.
+
+A direção do desvio é **invertida de propósito** (vai *em direção* ao lado da ameaça): foi uma escolha do autor
+durante os estudos e foi mantida.
+
+</script>
+<script type="text/markdown" data-key="04-rede-neural" data-file="04-rede-neural.md">
+# 04 — Rede neural
+
+A rede neural é o cérebro da Fase 2. Ela recebe os 11 números do `getInputs()` e devolve 6 números, um para cada
+tecla. Toda a rede é escrita à mão em `brain-nn.js`, sem bibliotecas, para dar para ver cada conta.
+
+## Formato: 11 → 6 → 6
+
+```mermaid
+flowchart LR
+    subgraph Entradas [11 entradas]
+        i0[Altura nave] & i1[Horizontal nave] & i2[Existe tiro?] & i3[Dist. tiro] & i4[Altura tiro]
+        i5[Existe inimigo?] & i6[Dist. inimigo] & i7[Altura inimigo] & i8[Tem especial?]
+        i9[Espaço acima] & i10[Espaço abaixo]
+    end
+    subgraph Escondida [6 neurônios escondidos]
+        h0((h0)) & h1((h1)) & h2((h2)) & h3((h3)) & h4((h4)) & h5((h5))
+    end
+    subgraph Saídas [6 saídas]
+        o0[up] & o1[down] & o2[left] & o3[right] & o4[fire] & o5[special]
+    end
+    Entradas --> Escondida --> Saídas
+```
+
+- **Camada escondida:** 6 neurônios × (11 pesos + 1 bias) = **72 números**.
+- **Camada de saída:** 6 neurônios × (6 pesos + 1 bias) = **42 números**.
+- **Total: 114 números.** Esses 114 números *são* o cérebro: duas redes com os mesmos 114 números jogam igual.
+
+"Totalmente conectada": cada neurônio de uma camada recebe **todas** as saídas da camada anterior.
+
+## Um neurônio
+
+```js
+function neuron(inputs, weights, bias) {
+    let sum = bias;
+    for (let i = 0; i < inputs.length; i++) sum += inputs[i] * weights[i];
+    return sum;
+}
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+```
+
+1. multiplica cada entrada pelo seu **peso** e soma tudo, mais o **bias**;
+2. passa a soma pela **sigmoide**, que "achata" qualquer número para ficar entre 0 e 1:
+
+| soma | sigmoide |
+|---|---|
+| −6 | 0,002 |
+| −2 | 0,12 |
+| 0 | 0,5 |
+| +2 | 0,88 |
+| +6 | 0,998 |
+
+- **Peso positivo:** quanto maior a entrada, mais o neurônio liga.
+- **Peso negativo:** quanto maior a entrada, mais o neurônio desliga.
+- **Bias:** a "vontade" do neurônio quando todas as entradas são 0.
+
+### Exemplo de conta
+
+Um neurônio de saída `fire` com pesos `[2, 0, −1, 0, 0, 0]` e bias `−0,5`, recebendo da camada escondida
+`[0,9, 0,3, 0,8, 0,1, 0,5, 0,2]`:
+
+```
+soma = −0,5 + 0,9×2 + 0,3×0 + 0,8×(−1) + 0 + 0 + 0 = 0,5
+sigmoide(0,5) = 0,62   →   0,62 > 0,5 (limite)  →  atira
+```
+
+## Do número à tecla
+
+```js
+function predict(network, inputs) {
+    const hidden = runLayer(inputs, network.hidden);
+    return network.output.map((n, i) =>
+        sigmoid(neuron(hidden, n.weights, n.bias) + actionWeights[ACTION_KEYS[i]]));
+}
+function nnDecide(state, network) {
+    const outputs = predict(network, getInputs(state));
+    // cada saída acima do limite = tecla apertada
+}
+```
+
+### Limite para apertar (`pressThreshold`, padrão 0,5)
+
+Saída acima do limite = tecla apertada naquele frame. Ajustável no painel. Como a sigmoide vale 0,5 quando a soma é 0,
+com limite 0,5 a regra equivale a "aperta se a soma for positiva".
+
+### Peso de cada tecla (`actionWeights`)
+
+Um número fixo **somado à saída antes da sigmoide**, igual para todas as redes, ajustável no painel (−10 a +10) e
+salvo junto com o treino:
+
+| Tecla | Padrão | Efeito |
+|---|---|---|
+| up / down | 0 | neutros — mesmo peso para os dois |
+| left / right | −3 | precisam de mais "vontade" para apertar |
+| fire | +2 | aperta com facilidade |
+| special | −8 | só aperta quando a rede "quer muito" — guarda a munição |
+
+A evolução continua decidindo **quando** apertar; o peso só muda **o quanto custa** apertar. Os valores são grandes
+porque as redes treinadas somam valores grandes nas saídas (medido: mediana +9 no especial, +7 no tiro). Com ±1 quase
+nada mudava; com −8 no especial ele caiu de 100% para ~27% dos frames.
+
+O peso **não apaga um hábito aprendido**: com up e down em 0, as redes medidas ainda usavam ↑ 60% e ↓ 18% dos frames,
+porque os pesos *dentro* da rede é que preferem subir.
+
+## Como a rede nasce
+
+```js
+function randomWeight() { return Math.random() * 2 - 1; }   // entre −1 e 1
+function createNetwork() {
+    return { hidden: createLayer(11, 6), output: createLayer(6, 6) };
+}
+```
+
+Uma rede recém-criada não sabe nada: aperta teclas mais ou menos ao acaso conforme a situação. O botão
+**"Nova rede aleatória"** do painel sorteia uma.
+
+## Limite dos pesos: ±4 (`WEIGHT_LIMIT`)
+
+Nenhum peso passa de −4 a +4 (o limite é aplicado na mutação — ver [05](05-neuroevolucao.md#mutação)).
+
+Por quê: sem limite, as mutações se acumulam e os pesos crescem sem parar — chegaram a **31** depois de 125 gerações
+(mediana 6,3). Com pesos enormes:
+
+- a soma de todo neurônio fica sempre muito positiva ou muito negativa;
+- a sigmoide vira um interruptor: sempre 0 ou sempre 1;
+- uma mutação de ±0,5 não muda nada — a evolução **trava**.
+
+Foi assim que a saída `down` morreu: bias −27, e nenhuma combinação de entradas fazia a nave descer. Ver o caso
+completo em [09 — Diário de decisões](09-diario-de-decisoes.md#a-nave-não-descia-saturação-dos-pesos).
+
+## A rede como lista: o genoma
+
+Para a evolução, a rede é "achatada" numa lista de 114 números (`networkToGenome`), nesta ordem:
+
+```
+[ h0: w0..w10, bias ] [ h1: … ] … [ h5: … ]      ← 6 × 12 = 72 (camada escondida)
+[ up: w0..w5, bias ] [ down: … ] … [ special: … ] ← 6 × 7  = 42 (camada de saída)
+```
+
+`genomeToNetwork` faz o caminho de volta. Ver [05 — Neuroevolução](05-neuroevolucao.md).
+
+## Como a rede cresceu (e como treinos antigos são aproveitados)
+
+| Versão | Entradas | Saídas | Tamanho do genoma | O que entrou |
+|---|---|---|---|---|
+| 1 | 8 | 5 | 89 | posição da nave, tiro e inimigo mais próximos |
+| 2 | 9 | 6 | 102 | + "tem especial?" e a saída `special` |
+| 3 (atual) | 11 | 6 | 114 | + espaço acima e abaixo (terreno) |
+
+Entradas e saídas novas sempre entram **no fim** da lista. Assim, `upgradeGenome()` converte um genoma antigo sem
+perder o aprendizado:
+
+- cada neurônio escondido ganha **peso 0** para cada entrada nova → ele continua calculando exatamente o mesmo;
+- a camada de saída ganha neurônios novos **aleatórios**, que a evolução vai ajustar.
+
+Foi conferido no navegador: a rede convertida dá saídas idênticas à original (diferença 0) nas saídas que já existiam.
+O formato antigo é reconhecido pelo tamanho do genoma (`LEGACY_SHAPES`).
+
+## Onde ver a rede funcionando
+
+O card **"Rede neural ao vivo"** da telemetria desenha a rede atual a cada 100 ms: cada linha é um peso (verde =
+positivo, vermelho = negativo, grossura = força), cada bolinha acende conforme o valor do neurônio, e a saída fica
+amarela quando a tecla está apertada. Ver [08](08-painel-e-telemetria.md#rede-neural-ao-vivo).
+
+</script>
+<script type="text/markdown" data-key="05-neuroevolucao" data-file="05-neuroevolucao.md">
+# 05 — Neuroevolução
+
+**Neuroevolução** = encontrar os pesos de uma rede neural com um **algoritmo genético**, em vez de calculá-los com
+gradiente (backpropagation). Tudo isso está em `evolution.js`.
+
+## Por que evolução e não backpropagation
+
+Backpropagation precisa de um "gabarito": para cada situação, qual era a tecla certa. No jogo não existe gabarito —
+só sabemos, **no fim da partida**, se a nave foi bem ou mal (os pontos). A evolução só precisa disso: uma **nota** por
+rede. Ela testa, mede, mantém o que funcionou e varia a partir daí.
+
+A analogia biológica:
+
+| Biologia | Aqui |
+|---|---|
+| Indivíduo | uma nave (uma rede neural) |
+| DNA | o genoma: a lista de 114 pesos |
+| Aptidão (*fitness*) | a nota da nave nas 8 fases |
+| Seleção natural | torneio: as de nota maior têm mais filhos |
+| Reprodução sexuada | cruzamento: o filho mistura os pesos de dois pais |
+| Mutação | alguns pesos levam um empurrão aleatório |
+| Geração | as 30 naves que jogam antes da próxima evolução |
+
+## Os números do algoritmo
+
+| Constante | Valor | Significado |
+|---|---|---|
+| `POPULATION_SIZE` | 30 | naves por geração |
+| `ELITE_COUNT` | 2 | as 2 melhores passam **intactas** para a próxima geração |
+| `TOURNAMENT_SIZE` | 3 | cada pai é o melhor de 3 sorteados |
+| `mutationRate` | 0,1 (painel) | chance de **cada** peso sofrer mutação |
+| `mutationStrength` | 0,5 (painel) | tamanho típico da mutação (desvio-padrão da gaussiana) |
+| `WEIGHT_LIMIT` | 4 | nenhum peso passa de ±4 |
+
+## Uma geração vira a próxima — `nextGeneration()`
+
+```mermaid
+flowchart TB
+    A[30 naves com nota] --> B[Ordena pela nota]
+    B --> C[2 melhores: cópia intacta<br/>elitismo]
+    B --> D[Torneio: sorteia 3, fica com a melhor → pai A]
+    B --> E[Torneio: sorteia 3, fica com a melhor → pai B]
+    D & E --> F[Cruzamento uniforme]
+    F --> G[Mutação gaussiana com limite ±4]
+    G --> H{30 naves?}
+    H -->|não| D
+    H -->|sim| I[Nova geração, ainda sem nota]
+    C --> I
+```
+
+### Elitismo
+
+As 2 melhores são copiadas sem mudança. Garante que a evolução **nunca anda para trás** por azar: o melhor cérebro
+encontrado sempre continua na população.
+
+### Seleção por torneio — `tournament()`
+
+Sorteia 3 naves ao acaso e devolve a de maior nota. Naves boas ganham mais torneios e têm mais filhos, mas naves
+medianas ainda têm chance — isso mantém **diversidade**, que é a matéria-prima da evolução. (Selecionar sempre as
+melhores faria a população inteira virar cópia de uma só muito rápido.)
+
+### Cruzamento uniforme — `crossover()`
+
+Para cada um dos 114 pesos, joga uma moeda: o filho herda o peso do pai A ou do pai B.
+
+```js
+genomeA.map((gene, i) => (Math.random() < 0.5 ? gene : genomeB[i]));
+```
+
+### Mutação
+
+Cada peso tem 10% de chance de levar um empurrão sorteado de uma **distribuição normal** (gaussiana): quase sempre
+pequeno, às vezes grande. O resultado é preso entre −4 e +4.
+
+```js
+genome.map(gene => (Math.random() < mutationRate
+    ? clampWeight(gene + randomGaussian() * mutationStrength)
+    : gene));
+```
+
+`randomGaussian()` usa a transformação de **Box-Muller** para gerar números normais a partir de `Math.random()`.
+
+| Ajuste | Mais alto | Mais baixo |
+|---|---|---|
+| Taxa de mutação | explora mais, mas estraga mais o que já funciona | refina devagar, risco de estagnar |
+| Força da mutação | saltos grandes (bom para sair de becos) | ajuste fino |
+
+## Ruído na nota
+
+Duas partidas da mesma rede **não dão a mesma nota**: os inimigos atiram em intervalos aleatórios. Consequências:
+
+- a melhor nota de uma geração pode cair na seguinte mesmo com a mesma rede de elite;
+- uma rede mediana pode ter sorte e parecer ótima por uma geração.
+
+O torneio, o elitismo e o tamanho da população amortecem esse ruído. Olhe a **tendência da média** no gráfico, não um
+ponto isolado.
+
+## Conserto de redes saturadas — `repairGenome()`
+
+Treinos feitos antes do limite de ±4 tinham pesos enormes e saídas "travadas" (ver [04](04-rede-neural.md#limite-dos-pesos-4-weight_limit)).
+Ao carregar um treino salvo sem o campo `weightLimit` (ou com um valor diferente do atual), cada genoma da população
+passa por:
+
+1. **`rescaleNeuron()`** — divide os pesos e o bias de cada neurônio pelo mesmo número positivo até o maior caber em
+   ±4. **O sinal da soma não muda**, então o neurônio continua decidindo igual; só fica menos radical. Preserva quase
+   todo o aprendizado (medido: a melhor nave manteve as notas das fases 1–4 e 8; a fase 7 caiu de 1.820 para 865).
+2. **`isStuck()`** — um neurônio está *travado* quando nenhuma entrada consegue mudar seu estado. Como as entradas da
+   camada de saída vão de 0 a 1:
+   - travado desligado: `bias + soma dos pesos positivos < 0`;
+   - travado ligado: `bias + soma dos pesos negativos > 0`.
+3. Em **metade** da população (as de índice ímpar), as **saídas travadas são sorteadas de novo**. A outra metade fica
+   como estava, para não perder o que funciona. A seleção decide qual metade vence. A melhor de todas (`bestEver`)
+   só é reescalada, nunca sorteada.
+
+Resultado medido numa geração de teste: a fase 5 foi de **0 para 1.213 pontos** e a fase 2 de ~300 para 704 — porque
+a saída `down` voltou a existir. O conserto roda **uma vez**: depois disso o arquivo é salvo com `weightLimit: 4`.
+
+## Funções de apoio
+
+| Função | O que faz |
+|---|---|
+| `networkToGenome(net)` / `genomeToNetwork(genome)` | rede ↔ lista de 114 números |
+| `randomGenome()` | genoma de uma rede nova aleatória |
+| `createPopulation()` | 30 genomas aleatórios, nota 0 |
+| `upgradeGenome(genome)` | converte genomas de 89 ou 102 números para o formato atual (ver [04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
+| `genomeLength(inputs, outputs)` | tamanho de genoma para um formato de rede |
+| `clampWeight(value)` | prende um peso entre −4 e +4 |
+
+</script>
+<script type="text/markdown" data-key="06-treino" data-file="06-treino.md">
+# 06 — Treino
+
+O treino (`training.js`) é o que liga tudo: faz cada nave da população jogar, calcula a nota, chama a evolução e
+salva o resultado.
+
+## O ciclo completo
+
+```mermaid
+flowchart TB
+    start([Iniciar treino]) --> load[loadIndividual:<br/>rede da nave i, fase 1]
+    load --> run[startLevelRun:<br/>resetGame na fase atual]
+    run --> play[Joga frame a frame<br/>runTrainingFrame]
+    play --> over{levelOver?}
+    over -->|não| play
+    over -->|sim| fin[finishLevel:<br/>guarda pontos e como terminou]
+    fin --> more{fase ≤ 8?}
+    more -->|sim| run
+    more -->|não| next{última nave<br/>da geração?}
+    next -->|não| load
+    next -->|sim| gen[endGeneration:<br/>recordes, notas, telemetria,<br/>nextGeneration, salvar]
+    gen --> load
+```
+
+- Cada **nave** (indivíduo) joga **as 8 fases**, uma de cada vez.
+- Cada **fase começa do zero**: 4 vidas, 0 pontos, míssil × 3 (`resetGame(fase)`). Ir mal numa fase não atrapalha a
+  próxima — a nave precisa jogar bem em todas.
+- Quando as 30 naves terminam, `endGeneration()` calcula as notas oficiais, registra a telemetria, cria a próxima
+  geração e salva tudo.
+
+## Quando uma fase termina — `levelOver()`
+
+| Condição | Por quê |
+|---|---|
+| Perdeu a **primeira vida** | Morrer custa todos os pontos que a nave ainda faria — ela aprende a não morrer. E acelera o treino. |
+| `gameOver` | Segurança (não deveria acontecer antes da primeira vida) |
+| Chefe morto (`currentLevel.levelComplete`) | A fase foi vencida |
+| 150 s de **jogo** (`MAX_LEVEL_SECONDS`) | Evita naves que ficam vivas sem fazer nada para sempre |
+
+O tempo é contado em **frames do jogo** (`training.episodeFrames`), não no relógio — 150 s são sempre 9.000 frames,
+em qualquer velocidade.
+
+## Como uma fase termina e o que matou
+
+Para a telemetria, cada fase guarda **como** terminou (`END_REASONS`):
+
+| Código | No painel | Significado |
+|---|---|---|
+| `cleared` | venceu o chefe | `levelComplete` |
+| `timeout` | tempo esgotado | chegou a 150 s |
+| `terrain` | terreno | morreu encostando no cenário |
+| `enemy` | inimigo | morreu batendo num inimigo comum |
+| `boss` | chefe | morreu batendo no chefe |
+| `shot` | tiro | morreu atingida por um tiro |
+
+O `game.js` só tira a vida, sem dizer o motivo. Para descobrir, `training.js` **envolve** o método do jogo:
+
+```js
+const originalPlayerDead = Level.prototype.playerDead;
+Level.prototype.playerDead = function () {
+    lastDeathCause = deathCause(this);   // no instante da morte, no que a nave estava encostando?
+    originalPlayerDead.call(this);       // e depois faz o que o jogo sempre fez
+};
+```
+
+`deathCause()` testa, nessa ordem, colisão da hitbox da nave com: terreno → hitboxes do chefe → inimigos comuns; se
+nada bate, foi um tiro. Funciona porque, no momento em que o jogo chama `playerDead()`, o objeto que matou ainda está
+nas listas (o jogo só remove os objetos marcados como `delete` no fim do frame).
+
+## A nota (fitness) — versão 3
+
+### A ideia
+
+```
+nota da nave = Σ (pontos na fase ÷ recorde da fase)      para as 8 fases
+```
+
+- cada fase vale **até 1**; a nota vai de **0 a 8**;
+- **recorde** = a maior pontuação já vista naquela fase (`training.levelRecords`). Ele só sobe e é a "régua";
+- os pontos de cada fase incluem um **desempate** de 0,1 ponto por segundo vivo (`SURVIVAL_POINTS_PER_SECOND`).
+
+### Por que não somar os pontos
+
+Era assim na versão 2, e as fases ficavam desiguais: a fase 7 rende ~2.000 pontos, a fase 5 rende ~100. Aprender a
+fase 5 inteira valia menos que a sorte na fase 7, então a evolução simplesmente ignorava as fases difíceis. A
+telemetria mostrou isso: as 30 naves morriam no terreno das fases 5 e 6, geração após geração. Com a divisão pelo
+recorde, ir de 0 a 100 numa fase cujo recorde é 100 vale tanto quanto ir de 0 a 2.000 na fase 7.
+
+### Detalhes que importam
+
+- **A régua é a mesma para a geração inteira.** As notas oficiais só são calculadas em `endGeneration()`, **depois**
+  de os recordes subirem com o que a geração fez. Se fossem calculadas durante, a primeira nave seria medida por uma
+  régua mais fácil que a última.
+- **Piso de 10 no recorde** (`MIN_LEVEL_RECORD`). Numa fase em que ninguém pontua, o recorde seria ~0 e sobreviver
+  1 segundo a mais valeria uma fase inteira — puro ruído. Com o piso, 10 pontos (ou 100 s vivo) já valem 1. Na prática:
+  matar **um único inimigo** numa fase sem recorde vale quase uma fase inteira — um prêmio enorme para quem descobrir.
+- **Cada fase é limitada a 1** (`Math.min(1, …)`): passar do recorde não dá mais que 1.
+- **A nota pode cair sem a rede piorar**: quando um recorde sobe, a régua fica mais exigente para todos.
+- A **melhor de todas** (`bestEver`) também é medida de novo pelos recordes atuais a cada geração, para a comparação
+  ser justa.
+- Durante a partida, "nota atual" no painel é uma **prévia** com os recordes de agora (`currentFitness()`).
+
+### Histórico das versões da nota
+
+| Versão | Fórmula | Problema que levou à próxima |
+|---|---|---|
+| 1 | pontos + 1 por segundo vivo, numa partida contínua a partir da fase 1 (até 180 s) | 180 s não chegavam à fase 5; tempo vivo premiava fugir |
+| 2 | soma dos pontos nas 8 fases, cada uma do zero | fases que rendem muito dominavam a nota |
+| 3 (atual) | soma de pontos ÷ recorde por fase | — |
+
+Ao carregar um treino de outra versão, os pesos são mantidos, os recordes são reconstruídos a partir do que foi
+registrado (melhor nave e telemetria), e o gráfico de evolução recomeça (notas de escalas diferentes não se comparam).
+
+## Reiniciar o jogo sem recarregar a página — `resetGame()`
+
+O jogo original cria **todos os inimigos de todas as fases uma única vez**, quando o `game.js` carrega, e os altera
+durante a partida (posição, vida, `delete`). Por isso o jogo original recarrega a página para jogar de novo. O treino
+precisa de milhares de partidas, então:
+
+1. Ao carregar, `training.js` tira uma **cópia intacta** de todas as ondas (`pristineWaves`).
+2. A cada partida, `restoreEnemies()` entrega **cópias novas** dessas cópias para o jogo.
+
+A cópia é feita por `cloneGameObject()`, uma cópia profunda que:
+
+- **mantém a classe** de cada objeto (`Object.create(Object.getPrototypeOf(value))`) — um `Meteor` continua `Meteor`,
+  com seus métodos;
+- **não copia imagens** (`HTMLImageElement` é compartilhado);
+- aguenta **referências circulares** (o mapa `seen`).
+
+Depois, `resetGame()` zera vidas, pontos, especial, tira o jogo da pausa e cria `new Level(fase, escura?)`. A fase
+antiga é desativada (`currentLevel.active = false`) porque cada `Level` registra seus próprios ouvintes de teclado
+na janela, e os antigos ignoram teclas quando a fase não está ativa.
+
+As fases 1, 5 e 6 têm fundo escuro (`isDarkLevel`), as mesmas cores que o jogo usa ao passar de fase.
+
+## Velocidade e turbo
+
+O treino roda **vários frames do jogo por quadro da tela**. Para cada frame extra, `runTrainingFrame()` limpa os
+canvas e chama `currentLevel.update(FRAME_MS)` — o mesmo que o `animate()` do jogo faz — e depois `aiStep()`.
+
+| Modo | Quantos frames por quadro da tela | Medido |
+|---|---|---|
+| Velocidade (slider 1–30) | número fixo | no máximo 30 × 60 = 1.800 frames/s |
+| **Turbo** | o máximo que couber em ~75% do intervalo entre quadros, **sem desenhar** os extras | ~18.000 frames/s numa tela de 60 Hz |
+
+Por que o turbo é tão mais rápido: medido no navegador, o jogo roda ~11 mil frames/s desenhando e ~35 mil **sem
+desenhar** — desenhar é o que mais pesa. O turbo:
+
+1. calcula o orçamento: 75% do intervalo desde o último quadro (`TURBO_SHARE`), entre 12 e 50 ms. A 60 Hz isso dá
+   ~12 ms; se a tela estiver lenta, o orçamento cresce junto (até 50 ms, para os botões continuarem respondendo);
+2. **desliga o desenho** trocando os métodos de desenho dos dois canvas por funções vazias (`setDrawing(false)`):
+
+   ```js
+   ctx[method] = doNothing;   // um método próprio do objeto esconde o do protótipo
+   delete ctx[method];        // apagar devolve o original
+   ```
+
+   Isso só funciona porque o jogo usa apenas métodos de desenho que não devolvem nada (`drawImage`, `fillRect`,
+   `fillText`, `arc`…) — foi conferido no código antes;
+3. roda frames até estourar o orçamento; ao terminar uma fase, continua direto para a próxima;
+4. religa o desenho num `finally` — mesmo se der erro, o jogo volta a desenhar.
+
+A tela continua mostrando um frame por quadro (o que o `animate()` desenha), então dá para acompanhar.
+
+**Mantenha a aba visível**: com a aba escondida, o navegador reduz o `requestAnimationFrame` para ~1 por segundo, e
+o treino cai junto.
+
+## Controles do treino
+
+| Função | Botão no painel | O que faz |
+|---|---|---|
+| `startTraining()` | Iniciar treino | espera o treino salvo carregar, cria a população se não houver, liga o modo Rede e recomeça a nave atual da fase 1 |
+| `stopTraining()` | Pausar treino | para no meio; ao retomar, a nave atual recomeça (para a nota ser justa) |
+| `watchBest()` | Assistir a melhor | para o treino e coloca a `bestEver` para jogar a partir da fase escolhida |
+| `exportBest()` | Copiar melhor | copia a rede da melhor em JSON (área de transferência e console) |
+| `resetTraining()` | Zerar treino | volta para a geração 1 e apaga o treino salvo |
+| `selectLevel(n)` | 1 … 8 | fase inicial para jogar e assistir (o treino sempre passa pelas 8) |
+
+## Telemetria coletada durante o treino
+
+| Dado | Onde fica | Para quê |
+|---|---|---|
+| Pontos e fim de cada fase da nave atual | `training.levelScores`, `training.levelEnds` | card "geração em andamento" |
+| Frames em que cada tecla ficou apertada | `training.actionFrames`, `actionTotal` | barras "teclas apertadas" |
+| Tempo real da geração | `training.generationMs` | "tempo" e "falta" |
+| Frames por segundo | `trainingFramesPerSecond` | "frames/s" |
+| Por geração: melhor/média (nota e pontos), melhor e média por fase, fins por fase, segundos | `training.history[]` | gráficos |
+| Notas da última geração | `training.lastScores` | gráfico de barras |
+
+</script>
+<script type="text/markdown" data-key="07-persistencia" data-file="07-persistencia.md">
+# 07 — Salvar e carregar o treino
+
+O treino é salvo **no fim de cada geração** (`saveTraining()` dentro de `endGeneration()`) e carregado quando a
+página abre (`loadTraining()`).
+
+## Onde fica
+
+| Situação | Destino |
+|---|---|
+| Página aberta pelo `server.py` (normal) | arquivo `training-data/training.json` (+ `best-network.json`) |
+| Página aberta de outro jeito (ex.: GitHub Pages, sem servidor) | `localStorage` do navegador, chave `spaceImpactTraining` |
+
+O painel mostra onde foi o último salvamento ("Salvo em: …").
+
+## A API do `server.py`
+
+O `server.py` é um servidor HTTP da biblioteca padrão do Python (`ThreadingHTTPServer` + `SimpleHTTPRequestHandler`)
+que serve os arquivos do projeto e responde em **um endereço**:
+
+| Método | Endereço | Resposta |
+|---|---|---|
+| `GET` | `/api/training` | `200` com o JSON salvo, ou `200` com `null` se ainda não há treino |
+| `POST` | `/api/training` | grava o corpo em `training.json` e o campo `bestEver` em `best-network.json` |
+| `DELETE` | `/api/training` | apaga os dois arquivos (botão "Zerar treino") |
+
+Detalhes de implementação:
+
+- **Só aceita conexões desta máquina** (escuta em `127.0.0.1`).
+- **Sem cache** (`Cache-Control: no-store`): ao editar um `.js`, recarregar a página já pega a versão nova.
+- **Gravação atômica** (`write_json`): grava num `.tmp` e troca com `os.replace`. Se o computador desligar no meio,
+  o arquivo antigo continua inteiro — nunca fica um JSON pela metade.
+- **Limite de 5 MB** por envio e validação de JSON (`413` e `400` nos erros).
+- `GET` sem treino devolve `200 null` (e não `404`) para não sujar o console a cada abertura.
+- `allow_reuse_address = False`: no Windows, reaproveitar o endereço deixaria **dois servidores** escutarem a mesma
+  porta sem erro. Se a porta 8000 estiver ocupada, ele avisa e encerra com código 0 (o VS Code segue normalmente).
+
+### Como a página decide entre arquivo e `localStorage`
+
+`loadTraining()` faz um `GET /api/training`. Se a resposta tem `Content-Type: application/json`, **o servidor manda**
+— mesmo que a resposta seja `null` (ainda não há treino). Só se não houver servidor (erro de rede ou resposta que não
+é JSON, como a página 404 de um site estático) é que ele tenta o `localStorage`.
+
+`startTraining()` espera o carregamento terminar (`await trainingLoaded`) antes de criar uma população — sem isso,
+clicar rápido em "Iniciar treino" poderia começar do zero e sobrescrever o treino salvo.
+
+## Formato do `training.json`
+
+```jsonc
+{
+  "fitnessVersion": 3,            // versão da fórmula da nota (ver 06 — Treino)
+  "weightLimit": 4,               // limite de pesos com que estas redes treinaram (ver 05)
+  "actionWeights": { "up": 0, "down": 0, "left": -3, "right": -3, "fire": 2, "special": -8 },
+  "generation": 26,               // próxima geração a jogar
+  "genomes": [[…114 números…], …],          // as 30 redes da população atual (ainda sem nota)
+  "bestEver": {
+    "genome": […114 números…],
+    "fitness": 4.23,              // nota (0 a 8) medida pelos recordes atuais
+    "points": 5612,               // soma dos pontos crus
+    "generation": 5,
+    "levelScores": [532, 534, 434, 440, 1010, 1703, 433, 26]
+  },
+  "history": [                    // uma entrada por geração completa
+    {
+      "generation": 25, "best": 4.1, "average": 2.3,
+      "bestPoints": 5100, "averagePoints": 3020,
+      "levelBest":    [8 números],          // melhor pontuação em cada fase
+      "levelAverage": [8 números],
+      "levelEnds":    [8 × { "cleared": 0, "timeout": 0, "terrain": 0, "enemy": 0, "boss": 0, "shot": 0 }],
+      "seconds": 54                         // tempo real que a geração levou
+    }
+  ],
+  "lastScores": [30 números],     // notas da última geração, da maior para a menor
+  "levelRecords": [8 números]     // recorde de cada fase: a régua da nota
+}
+```
+
+O arquivo cresce ~1 KB por geração de histórico (~140 KB com 40 gerações). A população é salva **sem notas**: ao recarregar, a geração
+atual recomeça da primeira nave.
+
+`best-network.json` guarda só o `bestEver` (genoma, nota, fases). Para obter a rede em formato legível
+(`{ hidden: […], output: […] }`), use o botão **Copiar melhor**.
+
+## Compatibilidade com treinos antigos
+
+`applySnapshot()` aceita qualquer versão já usada e converte na hora:
+
+| Diferença no arquivo | O que acontece ao carregar |
+|---|---|
+| Genomas de 89 ou 102 números | `upgradeGenome()`: entradas novas com peso 0, saídas novas aleatórias ([04](04-rede-neural.md#como-a-rede-cresceu-e-como-treinos-antigos-são-aproveitados)) |
+| Sem `weightLimit` (ou diferente de 4) | `repairGenome()`: reescala todas as redes e revive saídas travadas em metade da população; o `bestEver` só é reescalado ([05](05-neuroevolucao.md#conserto-de-redes-saturadas--repairgenome)) |
+| `fitnessVersion` diferente | mantém os pesos; recria os recordes a partir da melhor nave e do histórico; zera o histórico e as notas da última geração |
+| Sem `actionWeights` | usa os pesos de tecla padrão |
+| Sem `lastScores` / `levelRecords` | começa vazio |
+
+## Backups
+
+Antes de cada mudança que alterava o formato ou a população, foi feita uma cópia em `training-data/`:
+
+| Arquivo | Geração | Antes de… |
+|---|---|---|
+| `training-antes-especial.json` | 87 | arma especial na rede (89 → 102 números) e treino nas 8 fases |
+| `training-antes-terreno.json` | 88 | sensores de terreno (102 → 114 números) |
+| `training-antes-equilibrio.json` | 115 | nota equilibrada por fase (versão 3) |
+| `training-antes-limite-pesos.json` | 128 | limite de ±4 e conserto das redes saturadas |
+
+Para voltar a um backup: pare o treino, renomeie o backup para `training.json` e recarregue a página. A conversão
+automática cuida do formato.
+
+</script>
+<script type="text/markdown" data-key="08-painel-e-telemetria" data-file="08-painel-e-telemetria.md">
+# 08 — Painel e telemetria
+
+A interface tem duas partes:
+
+- **Painel da IA** (coluna da direita, `ai-panel.js`) — os **controles**.
+- **Telemetria** (embaixo do jogo e na coluna do meio, `ai-telemetry.js`) — o que está **acontecendo** no treino.
+
+Ambos se atualizam a cada 100 ms (`PANEL_REFRESH_MS`).
+
+## Painel da IA
+
+### Quem controla
+
+`Você` / `Regras` / `Rede` — troca o cérebro (`setBrainMode`). Sair de `Rede` pausa o treino; ir para `Você` solta
+as teclas que a IA estava segurando.
+
+### Treino (neuroevolução)
+
+| Controle | O que faz |
+|---|---|
+| Iniciar / Pausar treino | liga e desliga o treino (ver [06](06-treino.md#controles-do-treino)) |
+| Assistir a melhor | a melhor nave de todas joga, a partir da fase inicial escolhida |
+| Copiar melhor | copia a rede da melhor em JSON |
+| Zerar treino | volta à geração 1 e apaga o arquivo salvo |
+| Turbo | roda o máximo de frames possível sem desenhar os extras (~10× mais rápido) |
+| Velocidade sem turbo | 1 a 30 frames do jogo por quadro da tela (desativado com o turbo ligado) |
+| Melhor nota até agora | nota (0 a 8), geração em que apareceu e pontos por fase |
+| Salvo em | arquivo ou `localStorage` |
+
+### Jogo
+
+Fase, vidas e pontos atuais; arma especial equipada e munição; e os botões **1–8** da **fase inicial** — para jogar
+e para "Assistir a melhor". O treino ignora essa escolha e sempre passa pelas 8 fases.
+
+### Rede e parâmetros
+
+| Controle | Variável | Faixa | Efeito |
+|---|---|---|---|
+| Nova rede aleatória | `network` | — | sorteia um cérebro novo (não mexe no treino) |
+| Limite para apertar | `pressThreshold` | 0,1 – 0,9 | saída acima disso = tecla apertada |
+| Peso de cada tecla | `actionWeights` | −10 – +10 | empurrão fixo em cada saída ([04](04-rede-neural.md#peso-de-cada-tecla-actionweights)) |
+| Intervalo entre tiros | `fireCooldown` | 50 – 1000 ms | ritmo máximo de tiro |
+| Taxa de mutação | `mutationRate` | 1% – 50% | chance de cada peso mudar |
+| Força da mutação | `mutationStrength` | 0,05 – 2 | tamanho da mudança |
+
+Os pesos das teclas são salvos com o treino e, ao carregar, os sliders acompanham o valor salvo. Os outros
+parâmetros valem só para a sessão.
+
+## Telemetria
+
+### Treino · geração em andamento (embaixo do jogo)
+
+| Número | Significado |
+|---|---|
+| geração | geração que está jogando |
+| nave | qual das 30 está jogando |
+| fase | qual das 8 fases essa nave está jogando |
+| nota atual | prévia da nota da nave (recordes atuais) |
+| frames/s | frames do jogo simulados por segundo real |
+| tempo | quanto a geração já levou (tempo real; pausas não contam) |
+| falta | previsão: `tempo ÷ naves concluídas × naves restantes` (conta frações de nave pelas fases já jogadas) |
+
+Abaixo:
+
+- **30 casinhas**, uma por nave: verde = já jogou, amarela = jogando agora.
+- **Pontos da nave atual por fase**: 8 cartões; a cor da **borda de baixo** diz como a fase terminou (mesmas cores
+  do gráfico "o que matou"); a fase em andamento fica amarela com a pontuação parcial. Passe o mouse para ver o
+  motivo por escrito.
+- **Teclas apertadas nesta geração**: % dos frames em que cada tecla esteve apertada, somando todas as naves
+  da geração até agora.
+
+### Rede neural ao vivo
+
+O diagrama da rede **atual** (a nave jogando, a melhor sendo assistida, ou a rede aleatória):
+
+- à esquerda, as **11 entradas** com o valor atual de cada uma;
+- no meio, os **6 neurônios escondidos**;
+- à direita, as **6 saídas** com o valor (já com o peso da tecla);
+- cada **linha** é um peso: verde = positivo, vermelho = negativo; grossura e opacidade = tamanho do peso;
+- cada **bolinha** acende conforme o valor do neurônio (0 = escura, 1 = clara); saída **amarela** = tecla apertada.
+
+Funciona até no modo `Você`: dá para jogar e ver o que a rede faria.
+
+### Evolução da nota (0 a 8)
+
+Linha **verde** = melhor nota de cada geração; linha **cinza** = média. A escala vai de 0 até a maior nota do
+histórico. Olhe a tendência da **média** — a melhor oscila com o ruído da partida
+(ver [05](05-neuroevolucao.md#ruído-na-nota)). A nota pode cair quando um recorde sobe.
+
+### Melhor pontuação por fase (mapa de calor)
+
+- uma **linha por fase** (F1–F8), uma **coluna por geração** (as últimas 60);
+- quanto mais **claro**, mais pontos a melhor nave da geração fez naquela fase;
+- a cor usa a **raiz quadrada** da pontuação: sem isso, uma fase de 1.900 pontos deixaria todas as de 100 pretas;
+- à direita: `melhor da última geração / recorde da fase` — o recorde é a régua da nota.
+
+Uma linha escura constante = fase em que a evolução não está avançando (foi assim que as fases 5 e 6 foram
+diagnosticadas).
+
+### Como as fases terminaram (o que matou)
+
+Para a **última geração completa**: uma barra por fase com as 30 naves divididas pelo motivo do fim — venceu o
+chefe, tempo esgotado, terreno, inimigo, chefe, tiro. Diz **o que** treinar: muita morte por terreno = falta
+informação ou controle sobre o terreno; muita morte por tiro = falta desviar/derrubar tiros.
+
+### Notas da última geração
+
+As 30 notas da última geração, da maior para a menor. As 2 primeiras (verde claro) são a **elite**, que passa intacta.
+Uma "escada" suave = população diversa; um bloco todo igual = população convergiu (todas parecidas).
+
+## Layout
+
+A página é montada em três faixas: barra do topo, conteúdo (`#app-body`) e rodapé.
+
+```
+<nav>                 barra do topo (logo)
+<div id="app-body">
+  <main id="ai-layout">
+    <div id="ai-game-column">   jogo + "Treino · geração em andamento"
+    <div id="ai-side-column">   rede neural ao vivo + 4 gráficos
+  </main>
+  <aside id="ai-panel">        Painel da IA (inserido pelo ai-panel.js)
+</div>
+<footer id="game-footer">     controles · objetivo · botões na tela
+```
+
+| Largura da janela | Comportamento |
+|---|---|
+| ≥ 1500 px (painel aberto) ou ≥ 1200 px (painel recolhido) | duas colunas de conteúdo: jogo com **680 px** e gráficos com o resto; os gráficos **esticam** para preencher a altura |
+| ≥ 1200 px | a página tem a altura exata da janela; o painel é uma coluna de 300 px; conteúdo e painel **rolam cada um por dentro** |
+| < 1200 px | uma coluna (jogo com até 840 px, gráficos embaixo); o painel volta a **flutuar** à direita e pode ser recolhido |
+| < 760 px | os gráficos ficam um embaixo do outro, e os números do progresso passam de 7 para 4 colunas |
+
+Detalhes:
+
+- **O jogo diminui só na tela.** O canvas continua 840 × 480 por dentro; o CSS só o desenha menor. Nada muda no jogo
+  nem nos sensores.
+- O `style.css` do jogo centraliza **todo** `<canvas>` da página (`left: 50%; transform: translateX(-50%)`). Os
+  gráficos da telemetria anulam isso (`.tl-canvas`), senão aparecem deslocados.
+- Os gráficos são redesenhados quando há geração nova **ou** quando a janela muda de tamanho (a chave
+  `staticChartsKey` inclui largura e altura). `prepareCanvas()` ajusta a resolução do canvas ao tamanho na tela e à
+  densidade de pixels, para não ficar borrado.
+- Os canvas que esticam usam `flex: 1 1 0` com `min-height` fixo — sem isso, o tamanho do desenho viraria o tamanho
+  do elemento e os gráficos cresceriam a cada redesenho.
+
+### Rodapé
+
+Uma faixa com os controles do teclado (setas, espaço, X), o objetivo e o interruptor **Botões na tela** (para celular).
+O interruptor tem `role="switch"`, `aria-checked` e liga com Enter quando focado. Com os botões na tela ligados, a
+legenda do teclado some.
+
+</script>
+<script type="text/markdown" data-key="09-diario-de-decisoes" data-file="09-diario-de-decisoes.md">
+# 09 — Diário de decisões
+
+Este é o registro, em ordem, dos problemas encontrados, de **como foram descobertos** e de **por que** cada solução
+foi escolhida. É a parte mais útil para estudar: quase todo avanço veio de medir algo e descobrir que a hipótese
+estava errada.
+
+---
+
+## Fase 0 — Observar antes de controlar
+
+Antes de qualquer cérebro, a IA só **lia** o jogo: um `setInterval` imprimia o estado com `console.table` (o trecho
+continua comentado no fim de `ai.js`). Foi assim que apareceram os primeiros fatos:
+
+- `x`/`y` são o **canto superior esquerdo**; `spriteSize` é o recorte da imagem, não o tamanho no jogo.
+- Cada classe tem sua convenção de velocidade: `Projectile` usa `speed` com `x += speed`; `EnemyMissile` e inimigos
+  usam `speedX` com `x -= speedX`. **Decisão:** os sensores convertem tudo para `vx` com sinal único (negativo =
+  esquerda).
+
+## Atirar: de `keys.space` a criar o tiro direto
+
+**Problema:** a primeira ideia, `keys.space.pressed = true`, não atira. No jogo, o tiro só é criado dentro do
+**`keydown`** — o `keys.space` só serve para impedir tiro repetido segurando a tecla.
+
+**Tentativa 2:** disparar um `KeyboardEvent` sintético. Funciona, mas quebra no treino acelerado (vários frames por
+evento) e depois de reiniciar a fase (cada `Level` tem seu próprio ouvinte de teclado).
+
+**Decisão:** `act()` cria o tiro exatamente como o `keydown` cria: `new Projectile(true, player)`. Mesmo efeito,
+sem depender de eventos.
+
+## O tiro infinito
+
+**Problema:** criando o tiro direto, a IA atirava **a cada frame** — 60 tiros por segundo, uma parede de balas que
+nenhum humano consegue. Isso é *reward hacking*: a IA ganharia explorando uma brecha, sem aprender a jogar.
+
+**Decisão:** intervalo mínimo entre tiros (`fireCooldown`, 200 ms, ritmo de um humano apertando rápido), dentro de
+`act()` para valer **para qualquer cérebro**. Depois, o mesmo para a arma especial (`specialCooldown`, 1 s).
+
+## Normalização: medir em vez de chutar
+
+**Problema 1:** a altura da nave foi normalizada como `y / 480` e o máximo medido foi **0,86**. A teoria explicou a
+medição: `y` é o topo da nave (70 px de altura), então o maior `y` é 410; e o menor é 50 (o placar). Com
+`normalize(y, 50, 410)`, os extremos medidos ficaram em −0,003 e 1,006.
+
+**Problema 2:** a posição horizontal como `x / 840` dava máximo 0,88. A pergunta foi: *"Ao considerar 740 não está
+desconsiderando uma parte da nave? Já que a ponta encosta na borda"*. Não está: `x` é a traseira; quando a ponta
+encosta na borda, `x = 840 − 100 = 740`. Então 740 é exatamente "encostado".
+
+**Lição registrada como método** (ver [03](03-sensores-e-acoes.md#normalização)): ler o limite no código → medir os
+extremos → comparar → normalizar e conferir ≈ 0 e ≈ 1.
+
+## Entradas de tamanho fixo e a flag "existe?"
+
+**Problema:** quando não havia tiro na tela, o código pulava as entradas do tiro e a lista ficava menor. A rede tem
+um número fixo de entradas — tudo desalinhava (a "distância do inimigo" caía na posição do "tiro").
+
+**Problema seguinte:** preencher "sem tiro" com `0,5` significava "tiro alinhado" — uma situação real e perigosa.
+
+**Decisão:** sempre 3 números por objeto, e o primeiro é uma **flag** (`existe? 0/1`); sem objeto, `[0, 1, 0,5]` e a
+rede aprende a ignorar o resto quando a flag é 0.
+
+## "Até agora não vimos nada de IA"
+
+Depois do cérebro de regras, a observação certeira: *"estamos criando comandos para ele reagir ao ambiente, mas
+inteligência não existe"*. Regras escritas à mão fazem exatamente o que foi programado.
+
+**Decisão:** **neuroevolução** — rede neural + algoritmo genético. Não há gabarito de "tecla certa" para usar
+backpropagation, mas há uma nota no fim de cada partida, e é disso que a evolução precisa. O cérebro de regras ficou
+como régua de comparação.
+
+Na mesma época: separação em arquivos (`brain-rules.js`, `brain-nn.js`, `evolution.js`, `training.js`, `ai.js`) e
+**todas as variáveis em inglês** (comentários em português).
+
+## Jogar de novo sem recarregar a página
+
+**Problema:** o jogo original cria todos os inimigos de todas as fases **uma vez**, ao carregar, e os altera durante a
+partida. Por isso ele recarrega a página para jogar de novo — inviável para milhares de partidas.
+
+**Decisão:** guardar uma cópia intacta de todas as ondas ao carregar e entregar cópias novas a cada partida, com uma
+cópia profunda que **preserva a classe** dos objetos e não copia imagens (`cloneGameObject`). E desativar a fase
+antiga, porque cada `Level` registra ouvintes de teclado que ficariam vivos.
+
+## O tempo do treino em frames, não no relógio
+
+**Problema:** o intervalo entre tiros medido em milissegundos reais quebra o treino acelerado — 10 frames do jogo
+passam em 1 ms real, e a nave quase não atiraria.
+
+**Decisão:** tudo que é tempo de jogo é contado em **frames** (`aiFrame`, `episodeFrames`), com 1 frame = 16,7 ms.
+
+## Pequenos problemas de infraestrutura
+
+| Problema | Causa | Decisão |
+|---|---|---|
+| Clicar rápido em "Iniciar treino" começava do zero | o treino salvo ainda estava carregando | `startTraining()` faz `await trainingLoaded` |
+| Erro 404 no console toda vez que abria a página | não havia treino salvo | `GET` responde `200 null` |
+| Dois servidores na mesma porta sem erro (Windows) | `SO_REUSEADDR` | `allow_reuse_address = False` |
+| VS Code esperava o servidor para sempre | a linha "Space Impact em http" ficava no buffer | `print(..., flush=True)` |
+| Treino guardado só no navegador | `localStorage` | `server.py` grava em `training-data/`; `localStorage` vira plano B |
+
+## A nave parava no fim da fase
+
+**Relato:** *"está parando na 5, quando termina"*.
+
+**Investigação:** no jogo puro, a fase 5 terminava e passava para a 6. Testando com uma tecla segurada: com **↓**
+segurada no fim da fase 2, a nave **travava**. No fim de cada fase o jogo anima a nave: sobe 2 px/frame até o topo e
+anda para a direita (nas fases 5 e 6, que têm teto, ela **desce** até perto do chão e então anda para a direita). Na
+fase 2, a IA descendo 3 px/frame vencia a animação, e a nave nunca chegava à borda.
+
+**Decisão:** quando `currentLevel.levelComplete`, a IA solta tudo. O problema exato da fase 5 não foi reproduzido
+naquele momento — e a explicação real apareceu depois (ver abaixo).
+
+## Seletor de fases
+
+Para testar fases específicas sem jogar as anteriores: botões 1–8 que recomeçam a partida na fase escolhida
+(`selectLevel`, `resetGame(fase)`), com a cor de fundo certa de cada fase.
+
+## Pontos em cada tela e a arma especial
+
+**Pedido:** *"a nave tem que conseguir o maior número de pontos possíveis em cada tela e pode usar a segunda arma
+quando quiser"*.
+
+**Escolhas (feitas com o usuário):**
+
+- cada nave joga **as 8 fases**, cada uma do zero; a fase acaba ao perder a **primeira vida**;
+- antes, a partida era contínua com limite de 180 s — e só chegar ao chefe da fase 4 leva ~220 s, ou seja, **o
+  treino nunca via a fase 5**;
+- a rede ganhou uma saída `special` e uma entrada "tem especial?" (89 → 102 números), com conversão que não perde o
+  aprendizado (peso 0 para a entrada nova, conferido: diferença 0 nas saídas antigas).
+
+## Turbo: medir onde o tempo vai
+
+**Pergunta:** *"E se colocarmos mais telas ao mesmo tempo?"*
+
+**Medição:** o computador simulava ~11 mil frames/s desenhando e ~35 mil sem desenhar; o treino usava no máximo
+1.800 (30×60). O gargalo era o **teto do slider** e o **desenho**, não o processador.
+
+**Por que mais telas não ajudariam:** o JavaScript de uma página roda num núcleo só (4 telas = 4× mais lentas cada),
+e o `game.js` usa variáveis globais — dois jogos na mesma página dividiriam vidas e inimigos.
+
+**Decisão:** modo turbo — roda o máximo de frames que couber em cada quadro, sem desenhar os extras. Detalhe
+descoberto testando: o painel de testes rodava a só 19 quadros/s, e um orçamento fixo de 12 ms usava 23% do tempo;
+o orçamento passou a acompanhar o ritmo real da tela (75% do intervalo, entre 12 e 50 ms). Resultado: ~18 mil
+frames/s numa tela de 60 Hz, ~10× o máximo antigo.
+
+## Fases 5 e 6: a rede não enxergava o terreno
+
+**Investigação:** rodando as naves do treino nas fases 5 e 6, **todas morriam no terreno**, várias em **0,1 s**. A
+fase 5 tem o teto **15 px** acima da nave. As redes tinham aprendido nas fases 1–4 (terreno embaixo) que "subir
+salva"; na fase 5 subiam e batiam no teto. E, principalmente, a rede **não tinha nenhum sensor de terreno**.
+
+**Decisão:** entradas "espaço acima" e "espaço abaixo" (102 → 114 números, de novo com peso 0 nas entradas novas).
+
+**Teste honesto:** uma evolução curta só nas fases 5 e 6, **com** e **sem** os sensores (o "sem" substituindo a
+função por `[1, 1]`). Os dois casos melhoraram: o que mais destravou foi o treino **passar a cobrar** as fases 5 e 6.
+Os sensores ajudaram a chegar mais cedo (fase 6 com 1.573 pontos já na geração 2, contra a geração 6 sem eles) — mas
+uma rodada só não prova muito, e isso foi dito assim.
+
+## A telemetria encontrou o próximo problema
+
+Com o painel de telemetria pronto, a primeira geração mostrou: **30 de 30 naves morrendo no terreno** das fases 5 e 6,
+mesmo com sensores. Hipótese: a nota era a soma dos pontos, a fase 7 valia ~2.000 e a fase 5 ~100 — aprender a fase 5
+sumia no ruído da fase 7.
+
+**Decisão:** nota equilibrada (versão 3) — cada fase vale `pontos ÷ recorde`, até 1. Com cuidados: a régua é a mesma
+para a geração inteira, piso de 10 no recorde, e a melhor de todas é medida de novo a cada geração
+(ver [06](06-treino.md#a-nota-fitness--versão-3)).
+
+## Gráficos deslocados
+
+**Problema:** os primeiros gráficos apareciam cortados e deslocados para a esquerda.
+
+**Causa:** o `style.css` do jogo aplica `left: 50%; transform: translateX(-50%)` a **todo** `<canvas>` da página.
+
+**Decisão:** anular isso só nos canvas da telemetria (`.tl-canvas`).
+
+## A nave não descia: saturação dos pesos
+
+**Pergunta:** *"Verifica se existe algum problema para a nave descer"*.
+
+**Investigação, passo a passo:**
+
+1. A tecla funciona: forçando ↓, a nave desce 3 px/frame. (E ↑ + ↓ juntas se anulam.)
+2. Medindo as 30 naves: ↑ em 100% dos frames, ↓ em **0%**, em todas.
+3. O neurônio de saída `down` tinha **bias −27,5**; sigmoide(−27) ≈ 0. Nenhuma entrada levava a soma perto de 0.
+4. Os pesos: nasceram entre −1 e 1, mas depois de 125 gerações a **mediana era 6,3 e o máximo 31**. Nas 30 naves, o
+   bias do `down` estava entre −25 e −32.
+
+**Causa:** mutações sem limite se acumulam como um passeio aleatório. Com pesos enormes a sigmoide vira um interruptor
+(sempre 0 ou sempre 1), uma mutação de ±0,5 não muda nada e a evolução **trava**. A saída `down` tinha morrido — e a
+fase 5 começa colada no teto, onde a única saída é descer. Muito provavelmente era isso o "parando na 5" do começo.
+
+**Decisão:**
+
+- limite de **±4** nos pesos, aplicado na mutação;
+- para o treino existente: **reescalar** cada neurônio (dividir pesos e bias pelo mesmo número positivo preserva o
+  sinal da soma, ou seja, as decisões) e **sortear de novo as saídas travadas em metade da população**.
+
+**Testado antes de aplicar:** só reescalar não revivia o `down`. Reescalar + reviver em metade: em 8 gerações de teste
+a fase 5 foi de 0 para 207 e a fase 6 de 0 para 166. Aplicado de verdade, a primeira geração já mostrou a fase 5 com
+**1.213 pontos**.
+
+## Peso de cada tecla
+
+**Pedido:** igualar cima e baixo, diminuir esquerda e direita, tiro com mais peso, especial com o menor.
+
+**Decisão:** um valor fixo somado a cada saída antes da sigmoide (`actionWeights`), ajustável e salvo com o treino.
+
+**Medição:** com valores de ±1 a ±2, quase nada mudava (especial 100% → 99%). Medindo as somas das saídas nas redes
+treinadas: mediana **+9 no especial**, +7 no tiro. Os padrões passaram a ser −3 (esquerda/direita), +2 (tiro) e −8
+(especial), e o especial caiu para ~27% dos frames. Registrado também: peso igual não iguala um **hábito aprendido**
+(↑ 60% contra ↓ 18% com os dois em 0).
+
+## Layout
+
+Várias rodadas a partir de prints do usuário:
+
+1. telemetria embaixo do jogo → dava para ver só rolando a página;
+2. duas colunas (jogo + gráficos) e painel enxuto (as barras de entradas/saídas saíram porque o diagrama da rede já
+   mostra os mesmos valores);
+3. controles, descrição e "botões na tela" no **rodapé**;
+4. jogo em **680 px** e gráficos esticando para preencher a altura;
+5. o painel flutuante (`position: fixed`) cortava a barra do topo e cobria o rodapé → virou uma **coluna de verdade**
+   entre topo e rodapé.
+
+---
+
+## Lições
+
+1. **Meça antes de mudar.** O turbo, os sensores de terreno, a saturação e o peso das teclas só foram resolvidos
+   direito depois de uma medição desmentir a primeira hipótese.
+2. **A rede só aprende o que está nas entradas.** Sem sensor de terreno, nenhum treino ensinaria a fase 5.
+3. **A nota define o que a evolução persegue.** Soma de pontos crus = ignorar fases difíceis.
+4. **Dê espaço para a evolução andar.** Pesos sem limite saturam e congelam o aprendizado.
+5. **Tempo de jogo ≠ tempo de relógio.** Tudo que é regra do jogo conta frames.
+6. **Faça backup antes de mudar o formato do treino** — e escreva a conversão em vez de jogar o treino fora.
+7. **Teste de controle.** Comparar "com" e "sem" (sensores) evitou atribuir a uma mudança um ganho que veio de outra.
+
+</script>
+<script type="text/markdown" data-key="10-referencia-do-codigo" data-file="10-referencia-do-codigo.md">
+# 10 — Referência do código
+
+Todas as funções, constantes e variáveis globais dos arquivos da IA, arquivo por arquivo. Para o **porquê** de cada
+uma, siga os links para os outros documentos.
+
+Convenções do projeto: nomes de variáveis e funções **em inglês**, comentários **em português**, sem bibliotecas,
+scripts clássicos compartilhando variáveis globais (a ordem de carregamento está em
+[01](01-visao-geral.md#ordem-de-carregamento-dos-scripts)).
+
+---
+
+## Do `game.js` (usado pela IA, não modificado)
+
+| Nome | Tipo | Usado para |
+|---|---|---|
+| `currentLevel` | `Level` | a fase em jogo: `player`, `enemies`, `enemyProjectiles`, `playerProjectiles`, `playerSpecial`, `background`, `levelComplete`, `active`, `number`, `update(deltaTime)`, `playerDead()` |
+| `keys` | objeto | `keys.ArrowUp.pressed` etc. — o que move a nave |
+| `lives`, `playerScore`, `specialCount`, `specialAtttack` | globais | vidas, pontos, munição e tipo da arma especial (o nome `specialAtttack` tem 3 "t" no original) |
+| `gameOver`, `gamePause`, `isMainScreen` | globais | estado da partida |
+| `mainCanvas`, `bgCanvas`, `mainCtx`, `bgCtx` | canvas | tamanho da tela e desenho |
+| `Level`, `Projectile`, `EnemyMissile`, `Missile`, `Laser`, `Wall` | classes | criar fases, tiros e armas especiais |
+| `enemiesLvl1` … `enemiesLvl8` | arrays de ondas `{ time, object: [...] }` | inimigos de cada fase |
+| `checkCollision(a, b)` | função | colisão de retângulos |
+| `gameStart()` | função | sai da tela inicial |
+
+---
+
+## `ai.js` — sensores, atuadores e loop
+
+| Nome | Descrição |
+|---|---|
+| `getState()` | lê o jogo e devolve `{ player, lives, score, specialCount, specialType, enemies, enemyProjectiles, terrain }` ([03](03-sensores-e-acoes.md#camada-1--getstate-aijs)) |
+| `FRAME_MS` | `1000 / 60` — duração de um frame do jogo |
+| `fireCooldown` | ms mínimos entre tiros (200; painel) |
+| `specialCooldown` | ms mínimos entre armas especiais (1000) |
+| `aiFrame` | contador de frames da IA (o relógio dos intervalos) |
+| `lastFireFrame`, `lastSpecialFrame` | frame do último tiro / especial |
+| `act(action)` | aplica `{ up, down, left, right, fire, special }`: escreve em `keys`, cria tiros e especiais respeitando intervalos e munição |
+| `createSpecial(level)` | cria `Missile`, `Laser` ou `Wall` conforme `specialAtttack` |
+| `brainMode` | `"human"`, `"rules"` ou `"nn"` |
+| `network` | a rede que joga no modo `"nn"` |
+| `RELEASE_ALL` | ação com todas as teclas soltas |
+| `setBrainMode(mode)` | troca o cérebro; sair de `"nn"` pausa o treino; `"human"` solta as teclas |
+| `aiStep()` | um passo: sensores → cérebro → `act()`; com fase vencida, solta tudo. Devolve a ação (o treino conta as teclas) |
+| `aiLoop()` | roda a cada quadro da tela: `runTrainingFrame()` se treinando, senão `aiStep()` |
+
+## `brain-rules.js` — cérebro de regras
+
+| Nome | Descrição |
+|---|---|
+| `DANGER_DIST` | 250 px — distância a partir da qual um inimigo é ameaça |
+| `decide(state)` | sempre atira; se há ameaça, move para cima/baixo em direção ao lado do centro da ameaça mais próxima |
+| `isThreat(player, threat)` | ameaça = mesma faixa vertical (`sameRow`) + à frente (`ahead`) + perto (`close`) |
+
+## `brain-nn.js` — entradas e rede neural
+
+| Nome | Descrição |
+|---|---|
+| `PLAY_TOP` (50), `PLAY_LEFT` (0) | limites da área de jogo |
+| `MAX_SHOT_WIDTH` (50), `MAX_ENEMY_WIDTH` (380) | maiores larguras de tiro e inimigo, para a distância mínima |
+| `TERRAIN_LOOKAHEAD` (150), `TERRAIN_RANGE` (150) | alcance e escala dos sensores de terreno |
+| `INPUT_COUNT` (11) | número de entradas |
+| `normalize(value, min, max)` | normalização min-max presa entre 0 e 1 |
+| `describeNearest(objects, player, maxObjectWidth)` | `[existe?, distância, altura relativa]` do objeto mais próximo à frente |
+| `describeTerrain(terrain, player)` | `[espaço acima, espaço abaixo]` |
+| `getInputs(state)` | as 11 entradas ([03](03-sensores-e-acoes.md#camada-2--getinputsstate-brain-nnjs)) |
+| `HIDDEN_COUNT` (6), `ACTION_KEYS`, `OUTPUT_COUNT` (6) | formato da rede |
+| `pressThreshold` | limite para apertar (0,5; painel) |
+| `actionWeights` | peso fixo de cada tecla (painel; salvo com o treino) |
+| `neuron(inputs, weights, bias)` | soma ponderada + bias |
+| `sigmoid(x)` | `1 / (1 + e^−x)` |
+| `randomWeight()` | número aleatório entre −1 e 1 |
+| `createLayer(inputCount, neuronCount)` | camada de neurônios aleatórios `[{ weights, bias }]` |
+| `createNetwork()` | rede aleatória `{ hidden, output }` |
+| `runLayer(inputs, layer)` | aplica uma camada (soma + sigmoide) |
+| `predict(network, inputs)` | entradas → 6 saídas entre 0 e 1 (com `actionWeights`) |
+| `nnDecide(state, network)` | `getInputs` → `predict` → teclas acima do limite |
+
+## `evolution.js` — algoritmo genético
+
+| Nome | Descrição |
+|---|---|
+| `POPULATION_SIZE` (30), `ELITE_COUNT` (2), `TOURNAMENT_SIZE` (3) | parâmetros fixos |
+| `mutationRate` (0,1), `mutationStrength` (0,5) | parâmetros do painel |
+| `WEIGHT_LIMIT` (4) | limite absoluto de cada peso |
+| `networkToGenome(net)` / `genomeToNetwork(genome)` | rede ↔ lista de 114 números |
+| `randomGenome()` | genoma aleatório |
+| `LEGACY_SHAPES`, `genomeLength(inputs, outputs)` | formatos antigos de rede (8→5 e 9→6) |
+| `upgradeGenome(genome)` | converte genoma antigo: peso 0 nas entradas novas, saídas novas aleatórias |
+| `randomGaussian()` | número normal (Box-Muller) |
+| `tournament(population)` | melhor de 3 sorteados |
+| `crossover(genomeA, genomeB)` | cruzamento uniforme |
+| `mutate(genome)` | mutação gaussiana com limite |
+| `clampWeight(value)` | prende entre −4 e +4 |
+| `rescaleNeuron(neuron)` | divide pesos e bias pelo mesmo fator até caber no limite (preserva o sinal da soma) |
+| `isStuck(neuron)` | o neurônio nunca muda de estado com entradas entre 0 e 1? |
+| `repairGenome(genome, reviveStuck)` | reescala tudo e, se pedido, sorteia de novo as saídas travadas |
+| `createPopulation()` | 30 genomas aleatórios |
+| `nextGeneration(population)` | elitismo + torneio + cruzamento + mutação ([05](05-neuroevolucao.md)) |
+
+## `training.js` — treino, nota, turbo, persistência
+
+### Estado
+
+| Nome | Descrição |
+|---|---|
+| `training` | objeto com todo o estado do treino: `active`, `speed`, `turbo`, `generation`, `population`, `levelRecords`, `index`, `level`, `levelScores`, `levelEnds`, `episodeFrames`, `startLives`, `bestEver`, `history`, `lastScores`, `generationMs`, `actionFrames`, `actionTotal` |
+| `MAX_LEVEL_SECONDS` (150) | limite de cada fase em tempo de jogo |
+| `SURVIVAL_POINTS_PER_SECOND` (0,1) | desempate por tempo vivo |
+| `FITNESS_VERSION` (3) | versão da fórmula da nota |
+| `MIN_LEVEL_RECORD` (10) | piso do recorde de cada fase |
+| `LEVEL_COUNT` (8), `startLevel` | número de fases; fase inicial para jogar/assistir |
+| `STORAGE_KEY`, `TRAINING_API`, `savedTo` | `localStorage`, endereço da API e onde foi o último salvamento |
+
+### Morte e fim de fase
+
+| Nome | Descrição |
+|---|---|
+| `END_REASONS` | `cleared`, `timeout`, `terrain`, `enemy`, `boss`, `shot` |
+| `lastDeathCause` | causa da última morte (preenchida pelo `playerDead` envolvido) |
+| `Level.prototype.playerDead` (envolvido) | registra a causa e chama o original |
+| `deathCause(level)` | no que a hitbox da nave está encostando: terreno, chefe, inimigo ou tiro |
+| `levelEndReason()` | como a fase atual terminou |
+| `levelOver()` | perdeu vida, game over, chefe morto ou 150 s |
+
+### Reiniciar o jogo
+
+| Nome | Descrição |
+|---|---|
+| `ENEMY_LEVELS`, `pristineWaves` | ondas de todas as fases e a cópia intacta delas |
+| `cloneGameObject(value, seen)` | cópia profunda que preserva classes, compartilha imagens e aguenta ciclos |
+| `restoreEnemies()` | entrega cópias novas das ondas ao jogo |
+| `isDarkLevel(number)` | fases 1, 5 e 6 têm fundo escuro |
+| `resetGame(levelNumber)` | zera vidas, pontos, especial; cria a fase |
+| `selectLevel(number)` | fase inicial (recomeça a partida se não estiver treinando) |
+
+### Nota
+
+| Nome | Descrição |
+|---|---|
+| `levelFitness()` | pontos da fase atual + desempate por tempo vivo |
+| `levelReference(level, records)` | recorde da fase com o piso de 10 |
+| `balancedFitness(levelScores, records)` | `Σ min(1, pontos ÷ recorde)` |
+| `currentFitness()` | prévia da nota da nave em jogo |
+
+### Ciclo
+
+| Nome | Descrição |
+|---|---|
+| `loadIndividual()` | carrega a rede da nave atual e começa na fase 1 |
+| `startLevelRun()` | reinicia o jogo na fase atual |
+| `finishLevel()` | guarda pontos e motivo; passa à próxima fase, nave ou geração |
+| `endGeneration()` | atualiza recordes, calcula notas, `bestEver`, histórico, cria a próxima geração e salva |
+| `countEnds(reasons)` | conta os motivos de fim de uma fase |
+| `countActions(action)` | conta frames de cada tecla |
+| `runTrainingFrame()` | roda vários frames do jogo (velocidade fixa ou turbo) |
+
+### Turbo
+
+| Nome | Descrição |
+|---|---|
+| `TURBO_SHARE` (0,75), `TURBO_MIN_MS` (12), `TURBO_MAX_MS` (50) | orçamento de tempo por quadro |
+| `lastTrainingFrameStart` | para medir o intervalo entre quadros |
+| `DRAW_METHODS`, `doNothing`, `setDrawing(enabled)` | desliga/religa o desenho dos canvas |
+| `countFrame()`, `trainingFramesPerSecond` | medidor de frames/s |
+
+### Controles e persistência
+
+| Nome | Descrição |
+|---|---|
+| `startTraining()`, `stopTraining()`, `watchBest()`, `resetTraining()`, `exportBest()` | botões do painel ([06](06-treino.md#controles-do-treino)) |
+| `trainingSnapshot()` | objeto salvo em `training.json` |
+| `applySnapshot(saved)` | carrega e converte versões antigas ([07](07-persistencia.md#compatibilidade-com-treinos-antigos)) |
+| `saveTraining()` | `POST` no servidor; senão, `localStorage` |
+| `loadTraining()` | `GET` no servidor; senão, `localStorage` |
+| `deleteSavedTraining()` | `DELETE` no servidor e limpa o `localStorage` |
+| `trainingLoaded` | a promessa do carregamento inicial |
+
+## `ai-panel.js` — painel de controle
+
+| Nome | Descrição |
+|---|---|
+| `INPUT_LABELS` | nomes das 11 entradas (usados na telemetria) |
+| `SPECIAL_NAMES`, `KEY_NAMES` | nomes em português |
+| `PANEL_REFRESH_MS` (100) | intervalo de atualização |
+| `createPanel()` | monta o painel dentro de `#app-body` e liga os controles |
+| `bindSlider(id, getValue, setValue, format)` | liga um slider a uma variável |
+| `countWeights(net)` | número de pesos da rede (114) |
+| `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões |
+
+## `ai-telemetry.js` — telemetria
+
+| Nome | Descrição |
+|---|---|
+| `END_LABELS`, `ACTION_LABELS` | rótulos em português |
+| `HEATMAP_GENERATIONS` (60) | gerações no mapa de calor |
+| `telemetryColors` | cores lidas das variáveis CSS |
+| `staticChartsKey` | chave que decide quando redesenhar os gráficos de gerações |
+| `createTelemetry()` | monta o card de progresso (embaixo do jogo) e os gráficos (`#ai-side-column`) |
+| `refreshTelemetry()` | atualiza progresso e rede sempre; gráficos só quando a chave muda |
+| `refreshProgress()` | números, casinhas, pontos por fase, teclas |
+| `setText(id, text)`, `formatDuration(seconds)` | utilitários |
+| `prepareCanvas(id)` | ajusta resolução (inclusive densidade de pixels) e limpa |
+| `emptyMessage(chart, text)` | mensagem quando ainda não há dados |
+| `drawEvolution()` | linhas de melhor e média |
+| `mixColor(a, b, t)` | mistura duas cores hex |
+| `drawHeatmap()` | mapa de calor fase × geração |
+| `drawEnds()` | barras empilhadas "o que matou" |
+| `drawLastScores()` | barras das notas da última geração |
+| `drawNetwork()` | diagrama da rede ao vivo |
+
+## `ai-panel.css` — estilos
+
+| Seção | Conteúdo |
+|---|---|
+| Variáveis em `#ai-panel, #ai-layout` | cores: `--panel-*`, `--chart-bg`, `--lcd`, `--hot`, `--bad`, `--end-*` (uma por motivo de fim) |
+| `#ai-panel` | painel flutuante (< 1200 px) ou coluna (≥ 1200 px) |
+| `#app-body`, `#ai-layout`, colunas | layout de altura total, jogo em 680 px nas telas largas, gráficos que esticam |
+| `#game-footer` | rodapé |
+| `.tl-*` | cards e gráficos da telemetria |
+
+## `server.py`
+
+| Nome | Descrição |
+|---|---|
+| `PORT` (8000), `ROOT`, `DATA_DIR`, `TRAINING_FILE`, `BEST_FILE`, `API_PATH`, `MAX_BODY_BYTES` | configuração |
+| `Server` | `ThreadingHTTPServer` com `allow_reuse_address = False` |
+| `Handler` | serve os arquivos sem cache e responde `GET`/`POST`/`DELETE` em `/api/training` |
+| `write_json(path, data)` | gravação atômica (`.tmp` + `os.replace`) |
+
+## `tools/` — documentação em HTML
+
+| Arquivo | Conteúdo |
+|---|---|
+| `build_docs.py` | junta `docs/README.md`, `docs/01…10-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `<\/script` escapado) |
+| `docs-template.html` | o modelo da página: estilos, sumário lateral e o script que, no navegador, converte o Markdown com o marked.js, cria os ids dos títulos no estilo do GitHub (prefixados pelo nome do documento), troca links `06-treino.md#…` por âncoras da própria página e desenha os diagramas Mermaid |
+
+## `.vscode/`
+
+| Arquivo | Conteúdo |
+|---|---|
+| `tasks.json` | tarefa "Servidor Space Impact" (`python server.py`, em segundo plano, tarefa de build padrão) |
+| `launch.json` | "Jogar (Edge)" e "Jogar (Chrome)" com `preLaunchTask` |
+
+</script>
+<script type="text/markdown" data-key="glossario" data-file="glossario.md">
+# Glossário
+
+| Termo | Significado neste projeto |
+|---|---|
+| **Agente** | programa que observa o ambiente, decide e age, num ciclo. Aqui: `getState` → cérebro → `act`, a cada frame |
+| **Ambiente** | o jogo (`game.js`) |
+| **Sensor / observação** | o que o agente lê do ambiente: `getState()` e as 11 entradas de `getInputs()` |
+| **Atuador / ação** | o que o agente faz: as 6 teclas aplicadas por `act()` |
+| **Espaço de observação** | o conjunto de todas as entradas possíveis (11 números entre 0 e 1) |
+| **Espaço de ação** | o conjunto de ações possíveis (6 teclas, cada uma apertada ou não) |
+| **Política** | a regra que transforma observação em ação — aqui, a rede neural (ou as regras) |
+| **Agente reativo** | decide só pelo que vê agora, sem memória do passado. Os dois cérebros do projeto são reativos |
+| **Normalização (min-max)** | `(valor − min) ÷ (max − min)`, para deixar toda entrada entre 0 e 1 |
+| **Flag** | entrada 0/1 que diz se algo existe ("existe tiro?") |
+| **Feature engineering** | escolher e preparar o que a rede vê (posições relativas, flags, terreno) |
+| **Neurônio** | soma ponderada das entradas + bias, passada por uma função de ativação |
+| **Peso** | o número que multiplica uma entrada num neurônio; positivo liga, negativo desliga |
+| **Bias** | número somado ao neurônio independentemente das entradas: a "vontade" padrão dele |
+| **Sigmoide** | função `1 / (1 + e^−x)` que transforma qualquer número num valor entre 0 e 1 |
+| **Camada escondida** | os 6 neurônios entre as entradas e as saídas |
+| **Saturação** | quando a soma de um neurônio é tão grande (positiva ou negativa) que a sigmoide fica sempre em 0 ou 1; mudanças pequenas de peso não têm efeito |
+| **Neurônio travado** | neurônio que não muda de estado para nenhuma entrada possível (`isStuck`) |
+| **Limite para apertar** | valor da saída acima do qual a tecla é apertada (0,5) |
+| **Peso da tecla** | valor fixo somado a uma saída antes da sigmoide (`actionWeights`) |
+| **Genoma** | a rede achatada numa lista de 114 números |
+| **Indivíduo** | uma nave = um genoma |
+| **População** | as 30 naves de uma geração |
+| **Geração** | uma rodada em que todas as naves jogam e a evolução cria a próxima população |
+| **Fitness / nota** | quão bem uma nave jogou; aqui, `Σ pontos ÷ recorde` nas 8 fases (0 a 8) |
+| **Recorde da fase** | maior pontuação já vista numa fase; é a régua da nota |
+| **Episódio** | uma fase jogada por uma nave, do início até perder a 1ª vida, matar o chefe ou 150 s |
+| **Elitismo** | as melhores passam intactas para a próxima geração |
+| **Seleção por torneio** | sorteia algumas naves e escolhe a melhor delas como pai |
+| **Cruzamento (crossover) uniforme** | cada peso do filho vem de um dos dois pais, por sorteio |
+| **Mutação gaussiana** | soma a um peso um número sorteado de uma distribuição normal |
+| **Taxa / força de mutação** | chance de cada peso mudar / tamanho típico da mudança |
+| **Diversidade** | o quanto as naves da população são diferentes entre si; sem ela a evolução não tem o que selecionar |
+| **Neuroevolução** | treinar redes neurais com algoritmo genético |
+| **Backpropagation** | o outro jeito de treinar redes, com gradiente; precisa de respostas certas para comparar (não usado aqui) |
+| **Reward hacking** | a IA explora uma brecha da recompensa em vez de aprender a tarefa (ex.: tiro infinito) |
+| **Ruído na nota** | variação de nota entre partidas da mesma rede, por causa da aleatoriedade do jogo |
+| **Turbo** | rodar muitos frames do jogo por quadro da tela, sem desenhar os extras |
+| **Frame** | um passo da simulação do jogo (1/60 de segundo de jogo) |
+| **Hitbox** | o retângulo que realmente colide (menor que o desenho) |
+| **Telemetria** | dados coletados durante o treino e mostrados em gráficos |
+| **Mapa de calor** | grade colorida: linha = fase, coluna = geração, cor = pontuação |
+
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+(function () {
+  const sources = [...document.querySelectorAll('script[type="text/markdown"]')].map(s => ({
+    key: s.dataset.key,
+    file: s.dataset.file,
+    md: s.textContent.replace(/<\\\/script/g, "</script"),
+  }));
+  const byFile = Object.fromEntries(sources.map(s => [s.file, s.key]));
+
+  // slug no estilo do GitHub: minúsculas, tira pontuação (mantém letras acentuadas), cada espaço vira hífen
+  const slugify = text => text.toLowerCase().trim().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
+  const escapeHtml = text => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  let current = null;     // documento sendo convertido
+  let usedSlugs = {};
+  const headings = [];    // [{ key, id, level, text }]
+
+  function resolveLink(href) {
+    let target;
+    try { target = decodeURIComponent(href); } catch (e) { target = href; }
+    if (/^[a-z]+:/i.test(target)) return { href: target, external: true };
+    const [path, hash] = target.split("#");
+    const file = path.split("/").pop();
+    const key = path ? byFile[file] : current.key;
+    if (!key) return { href: target, external: false };
+    return { href: "#" + (hash ? key + "--" + hash : key), external: false };
+  }
+
+  marked.use({
+    gfm: true,
+    renderer: {
+      heading(text, level, raw) {
+        if (level === 1) {
+          headings.push({ key: current.key, id: current.key, level, text: raw.replace(/[`*_]/g, "") });
+          return `<h1 id="${current.key}">${text}</h1>\n`;
+        }
+        let slug = slugify(raw);
+        if (usedSlugs[slug] !== undefined) slug += "-" + (++usedSlugs[slug]);
+        else usedSlugs[slug] = 0;
+        const id = current.key + "--" + slug;
+        if (level === 2) headings.push({ key: current.key, id, level, text: raw.replace(/[`*_]/g, "") });
+        return `<h${level} id="${id}">${text}<a class="anchor" href="#${id}" aria-label="Link para esta seção">#</a></h${level}>\n`;
+      },
+      link(href, title, text) {
+        const link = resolveLink(href || "");
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+        const external = link.external ? ' target="_blank" rel="noopener"' : "";
+        return `<a href="${escapeHtml(link.href)}"${titleAttr}${external}>${text}</a>`;
+      },
+      code(code, lang) {
+        if ((lang || "").trim() === "mermaid") return `<pre class="mermaid">${escapeHtml(code)}</pre>\n`;
+        return `<pre><code>${escapeHtml(code)}</code></pre>\n`;
+      },
+      table(header, body) {
+        return `<div class="table-wrap"><table><thead>${header}</thead><tbody>${body}</tbody></table></div>\n`;
+      },
+    },
+  });
+
+  const container = document.getElementById("docs");
+  container.innerHTML = sources.map(source => {
+    current = source;
+    usedSlugs = {};
+    return `<article class="doc" data-key="${source.key}">${marked.parse(source.md)}</article>`;
+  }).join("");
+
+  // sumário: um item por documento; os subtítulos (h2) aparecem só no documento em leitura
+  const tocList = document.getElementById("toc-list");
+  const mobileList = document.getElementById("toc-mobile-list");
+  const docs = headings.filter(h => h.level === 1);
+  const label = text => {
+    const match = text.match(/^(\d+)\s*—\s*(.*)$/);
+    return match ? `<span class="num">${match[1]}</span>${escapeHtml(match[2])}` : escapeHtml(text);
+  };
+  tocList.innerHTML = docs.map(doc => {
+    const subs = headings.filter(h => h.level === 2 && h.key === doc.key);
+    return `<li><a href="#${doc.id}" data-target="${doc.id}">${label(doc.text)}</a>
+      <ol class="subs" data-doc="${doc.key}" hidden>${subs.map(s => `<li><a href="#${s.id}" data-target="${s.id}">${escapeHtml(s.text)}</a></li>`).join("")}</ol></li>`;
+  }).join("");
+  mobileList.innerHTML = docs.map(doc => `<li><a href="#${doc.id}">${label(doc.text)}</a></li>`).join("");
+  mobileList.addEventListener("click", event => {
+    if (event.target.closest("a")) document.querySelector(".toc-mobile").open = false;
+  });
+
+  // destaca no sumário o documento e a seção que estão na tela
+  const targets = headings.map(h => document.getElementById(h.id)).filter(Boolean);
+  function updateCurrent() {
+    let active = targets[0];
+    for (const el of targets) {
+      if (el.getBoundingClientRect().top <= 120) active = el; else break;
+    }
+    if (!active) return;
+    const activeHeading = headings.find(h => h.id === active.id);
+    tocList.querySelectorAll("a").forEach(a => {
+      const h = headings.find(x => x.id === a.dataset.target);
+      a.classList.toggle("current", a.dataset.target === active.id || (h && h.level === 1 && h.key === activeHeading.key));
+    });
+    tocList.querySelectorAll(".subs").forEach(ol => { ol.hidden = ol.dataset.doc !== activeHeading.key; });
+  }
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { updateCurrent(); ticking = false; });
+  }, { passive: true });
+  updateCurrent();
+
+  // abre no ponto do link, se ele veio com #seção
+  if (location.hash) {
+    const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (el) el.scrollIntoView();
+  }
+
+  // diagramas: o visualizador desenha blocos mermaid sozinho; se nenhum tiver sido desenhado, carrega o mermaid
+  setTimeout(() => {
+    const pending = [...document.querySelectorAll("pre.mermaid")].filter(pre => !pre.querySelector("svg"));
+    if (pending.length === 0) return;
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js";
+    script.onload = () => {
+      const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+      window.mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+      window.mermaid.run({ nodes: pending });
+    };
+    document.head.appendChild(script);
+  }, 1500);
+})();
+</script>
+
+</body>
+</html>

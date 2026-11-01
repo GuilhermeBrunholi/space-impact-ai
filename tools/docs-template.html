@@ -1,0 +1,343 @@
+<title>Documentação da IA Space Impact</title>
+<!-- Modelo de docs/documentacao.html. Não edite a página gerada: edite os docs/*.md (ou este modelo)
+     e rode  python tools/build_docs.py  — o script troca o marcador DOCS abaixo pelo conteúdo dos .md. -->
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Silkscreen&family=VT323&display=swap">
+<style>
+/* Layout: sumário fixo à esquerda (vira "Sumário" recolhível no celular) + coluna de leitura de ~72ch.
+   Cores do próprio projeto: escuro = Painel da IA; claro = a tela LCD verde do Nokia 3310. */
+:root {
+  --bg: #1a1f23;
+  --surface: #222a30;
+  --surface-2: #2a343b;
+  --line: #36424b;
+  --fg: #e3eadf;
+  --muted: #93a098;
+  --accent: #aad69c;
+  --accent-ink: #18200f;
+  --accent-soft: rgba(170, 214, 156, .12);
+  --hot: #f0c05a;
+  --code-bg: #151a1e;
+  --font-display: 'Silkscreen', 'Courier New', monospace;
+  --font-body: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+  --font-data: 'VT323', 'Consolas', monospace;
+  --font-code: 'Consolas', 'SFMono-Regular', 'Menlo', monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e3ebd8; --surface: #edf3e6; --surface-2: #d6e2c8; --line: #b5c6a5;
+    --fg: #1d2818; --muted: #56654b; --accent: #3d6a2f; --accent-ink: #eef4e8;
+    --accent-soft: rgba(61, 106, 47, .1); --hot: #9a6a0c; --code-bg: #f4f8ef;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #e3ebd8; --surface: #edf3e6; --surface-2: #d6e2c8; --line: #b5c6a5;
+  --fg: #1d2818; --muted: #56654b; --accent: #3d6a2f; --accent-ink: #eef4e8;
+  --accent-soft: rgba(61, 106, 47, .1); --hot: #9a6a0c; --code-bg: #f4f8ef;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 16px; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16.5px;
+  line-height: 1.65;
+}
+.shell {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ── Sumário ── */
+.toc {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  align-self: start;
+  max-height: 100vh;
+  overflow-y: auto;
+  padding-block: 28px;
+  display: grid;
+  gap: 14px;
+}
+.toc .brand { font-family: var(--font-display); font-size: 15px; color: var(--accent); line-height: 1.3; }
+.toc .brand small { display: block; font-family: var(--font-data); font-size: 18px; color: var(--muted); letter-spacing: .04em; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.toc a {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 14.5px;
+  line-height: 1.35;
+}
+.toc a:hover { background: var(--surface); }
+.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.toc .num { font-family: var(--font-data); font-size: 17px; color: var(--muted); margin-right: 6px; }
+.toc a.current { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.toc .subs { padding-left: 14px; border-left: 1px solid var(--line); margin: 2px 0 6px 18px; }
+.toc .subs[hidden] { display: none; }
+.toc .subs a { font-size: 13.5px; color: var(--muted); padding: 3px 8px; }
+.toc .subs a.current { color: var(--fg); background: transparent; font-weight: 700; }
+.toc-mobile { display: none; }
+
+/* ── Conteúdo ── */
+main { min-width: 0; padding-block: 28px 80px; }
+.cover {
+  padding-block: 8px 28px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 8px;
+  display: grid;
+  gap: 12px;
+  max-width: 72ch;
+}
+.cover .eyebrow { font-family: var(--font-data); font-size: 20px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.cover h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(28px, 5vw, 44px); line-height: 1.12; margin: 0; text-wrap: balance; }
+.cover p { margin: 0; font-size: 18px; }
+.cover .facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.cover .facts span {
+  font-family: var(--font-data); font-size: 20px; line-height: 1;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface);
+}
+.cover .facts b { color: var(--accent); font-weight: 400; }
+
+.doc { max-width: 76ch; padding-block: 36px 12px; border-bottom: 1px dashed var(--line); }
+.doc:last-child { border-bottom: none; }
+.doc > * + * { margin-top: 14px; }
+.doc h1, .doc h2, .doc h3, .doc h4 { font-weight: 400; text-wrap: balance; line-height: 1.2; scroll-margin-top: 16px; }
+.doc h1 { font-family: var(--font-display); font-size: clamp(22px, 3.6vw, 30px); color: var(--accent); margin: 0 0 6px; }
+.doc h2 { font-family: var(--font-display); font-size: 18px; margin-top: 34px; letter-spacing: .01em; }
+.doc h3 { font-family: var(--font-body); font-weight: 700; font-size: 17px; margin-top: 24px; }
+.doc h4 { font-family: var(--font-body); font-weight: 700; font-size: 16px; color: var(--muted); }
+.doc .anchor { margin-left: 8px; font-family: var(--font-data); color: var(--muted); text-decoration: none; opacity: 0; }
+.doc :is(h1, h2, h3):hover .anchor, .doc .anchor:focus-visible { opacity: 1; }
+.doc p, .doc li { max-width: 72ch; }
+.doc ul, .doc ol { padding-left: 1.4em; }
+.doc li + li { margin-top: 4px; }
+.doc li > ul, .doc li > ol { margin-top: 4px; }
+.doc a { color: var(--accent); text-underline-offset: 2px; }
+.doc strong { font-weight: 700; }
+.doc hr { border: none; border-top: 1px solid var(--line); margin-block: 28px; }
+.doc blockquote { margin: 0; padding: 8px 16px; border-left: 3px solid var(--hot); background: var(--surface); }
+.doc :not(pre) > code {
+  font-family: var(--font-code);
+  font-size: .86em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+.doc pre {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--code-bg);
+  overflow-x: auto;
+  font-family: var(--font-code);
+  font-size: 13.5px;
+  line-height: 1.55;
+  max-width: 100%;
+}
+.doc pre code { font-family: inherit; background: none; padding: 0; white-space: pre; }
+.doc pre.mermaid { background: var(--surface); text-align: center; font-family: var(--font-body); }
+.doc pre.mermaid svg { max-width: 100%; height: auto; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 6px; max-width: 100%; }
+.doc table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.45; }
+.doc th, .doc td { text-align: left; vertical-align: top; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.doc thead th { background: var(--surface); font-family: var(--font-data); font-size: 18px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+.doc tbody tr:last-child td { border-bottom: none; }
+.doc td code { white-space: nowrap; }
+
+.loading { color: var(--muted); font-family: var(--font-data); font-size: 20px; }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .toc { display: none; }
+  .toc-mobile {
+    display: block;
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 5;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding-block: 10px;
+  }
+  .toc-mobile summary { cursor: pointer; font-family: var(--font-display); font-size: 14px; color: var(--accent); }
+  .toc-mobile ol { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 2px; max-height: 60vh; overflow-y: auto; }
+  .toc-mobile a { display: block; padding: 6px 4px; color: var(--fg); text-decoration: none; font-size: 15px; }
+  body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Sumário">
+    <div class="brand">Space Impact IA<small>documentação do projeto</small></div>
+    <ol id="toc-list"></ol>
+  </nav>
+  <main>
+    <details class="toc-mobile">
+      <summary>Sumário</summary>
+      <ol id="toc-mobile-list"></ol>
+    </details>
+    <header class="cover">
+      <span class="eyebrow">Space-Impact-Web · neuroevolução</span>
+      <h1>Documentação da IA que aprende a jogar Space Impact</h1>
+      <p>Dos sensores à evolução das redes neurais, o treino, a telemetria e o diário de cada decisão tomada pelo caminho. Gerada a partir dos arquivos <code>docs/*.md</code> do projeto.</p>
+      <div class="facts">
+        <span><b>11</b> entradas</span>
+        <span><b>6</b> teclas</span>
+        <span><b>114</b> pesos</span>
+        <span><b>30</b> naves por geração</span>
+        <span><b>8</b> fases por nave</span>
+        <span>nota de <b>0 a 8</b></span>
+      </div>
+    </header>
+    <div id="docs"><p class="loading">Carregando a documentação…</p></div>
+  </main>
+</div>
+
+<!--DOCS-->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+(function () {
+  const sources = [...document.querySelectorAll('script[type="text/markdown"]')].map(s => ({
+    key: s.dataset.key,
+    file: s.dataset.file,
+    md: s.textContent.replace(/<\\\/script/g, "</script"),
+  }));
+  const byFile = Object.fromEntries(sources.map(s => [s.file, s.key]));
+
+  // slug no estilo do GitHub: minúsculas, tira pontuação (mantém letras acentuadas), cada espaço vira hífen
+  const slugify = text => text.toLowerCase().trim().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-");
+  const escapeHtml = text => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  let current = null;     // documento sendo convertido
+  let usedSlugs = {};
+  const headings = [];    // [{ key, id, level, text }]
+
+  function resolveLink(href) {
+    let target;
+    try { target = decodeURIComponent(href); } catch (e) { target = href; }
+    if (/^[a-z]+:/i.test(target)) return { href: target, external: true };
+    const [path, hash] = target.split("#");
+    const file = path.split("/").pop();
+    const key = path ? byFile[file] : current.key;
+    if (!key) return { href: target, external: false };
+    return { href: "#" + (hash ? key + "--" + hash : key), external: false };
+  }
+
+  marked.use({
+    gfm: true,
+    renderer: {
+      heading(text, level, raw) {
+        if (level === 1) {
+          headings.push({ key: current.key, id: current.key, level, text: raw.replace(/[`*_]/g, "") });
+          return `<h1 id="${current.key}">${text}</h1>\n`;
+        }
+        let slug = slugify(raw);
+        if (usedSlugs[slug] !== undefined) slug += "-" + (++usedSlugs[slug]);
+        else usedSlugs[slug] = 0;
+        const id = current.key + "--" + slug;
+        if (level === 2) headings.push({ key: current.key, id, level, text: raw.replace(/[`*_]/g, "") });
+        return `<h${level} id="${id}">${text}<a class="anchor" href="#${id}" aria-label="Link para esta seção">#</a></h${level}>\n`;
+      },
+      link(href, title, text) {
+        const link = resolveLink(href || "");
+        const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+        const external = link.external ? ' target="_blank" rel="noopener"' : "";
+        return `<a href="${escapeHtml(link.href)}"${titleAttr}${external}>${text}</a>`;
+      },
+      code(code, lang) {
+        if ((lang || "").trim() === "mermaid") return `<pre class="mermaid">${escapeHtml(code)}</pre>\n`;
+        return `<pre><code>${escapeHtml(code)}</code></pre>\n`;
+      },
+      table(header, body) {
+        return `<div class="table-wrap"><table><thead>${header}</thead><tbody>${body}</tbody></table></div>\n`;
+      },
+    },
+  });
+
+  const container = document.getElementById("docs");
+  container.innerHTML = sources.map(source => {
+    current = source;
+    usedSlugs = {};
+    return `<article class="doc" data-key="${source.key}">${marked.parse(source.md)}</article>`;
+  }).join("");
+
+  // sumário: um item por documento; os subtítulos (h2) aparecem só no documento em leitura
+  const tocList = document.getElementById("toc-list");
+  const mobileList = document.getElementById("toc-mobile-list");
+  const docs = headings.filter(h => h.level === 1);
+  const label = text => {
+    const match = text.match(/^(\d+)\s*—\s*(.*)$/);
+    return match ? `<span class="num">${match[1]}</span>${escapeHtml(match[2])}` : escapeHtml(text);
+  };
+  tocList.innerHTML = docs.map(doc => {
+    const subs = headings.filter(h => h.level === 2 && h.key === doc.key);
+    return `<li><a href="#${doc.id}" data-target="${doc.id}">${label(doc.text)}</a>
+      <ol class="subs" data-doc="${doc.key}" hidden>${subs.map(s => `<li><a href="#${s.id}" data-target="${s.id}">${escapeHtml(s.text)}</a></li>`).join("")}</ol></li>`;
+  }).join("");
+  mobileList.innerHTML = docs.map(doc => `<li><a href="#${doc.id}">${label(doc.text)}</a></li>`).join("");
+  mobileList.addEventListener("click", event => {
+    if (event.target.closest("a")) document.querySelector(".toc-mobile").open = false;
+  });
+
+  // destaca no sumário o documento e a seção que estão na tela
+  const targets = headings.map(h => document.getElementById(h.id)).filter(Boolean);
+  function updateCurrent() {
+    let active = targets[0];
+    for (const el of targets) {
+      if (el.getBoundingClientRect().top <= 120) active = el; else break;
+    }
+    if (!active) return;
+    const activeHeading = headings.find(h => h.id === active.id);
+    tocList.querySelectorAll("a").forEach(a => {
+      const h = headings.find(x => x.id === a.dataset.target);
+      a.classList.toggle("current", a.dataset.target === active.id || (h && h.level === 1 && h.key === activeHeading.key));
+    });
+    tocList.querySelectorAll(".subs").forEach(ol => { ol.hidden = ol.dataset.doc !== activeHeading.key; });
+  }
+  let ticking = false;
+  window.addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => { updateCurrent(); ticking = false; });
+  }, { passive: true });
+  updateCurrent();
+
+  // abre no ponto do link, se ele veio com #seção
+  if (location.hash) {
+    const el = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (el) el.scrollIntoView();
+  }
+
+  // diagramas: o visualizador desenha blocos mermaid sozinho; se nenhum tiver sido desenhado, carrega o mermaid
+  setTimeout(() => {
+    const pending = [...document.querySelectorAll("pre.mermaid")].filter(pre => !pre.querySelector("svg"));
+    if (pending.length === 0) return;
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js";
+    script.onload = () => {
+      const dark = getComputedStyle(document.documentElement).colorScheme.includes("dark");
+      window.mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+      window.mermaid.run({ nodes: pending });
+    };
+    document.head.appendChild(script);
+  }, 1500);
+})();
+</script>

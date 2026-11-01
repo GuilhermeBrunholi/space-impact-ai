@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Jogar (Edge)",
+            "type": "msedge",
+            "request": "launch",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}",
+            "preLaunchTask": "Servidor Space Impact"
+        },
+        {
+            "name": "Jogar (Chrome)",
+            "type": "chrome",
+            "request": "launch",
+            "url": "http://localhost:8000",
+            "webRoot": "${workspaceFolder}",
+            "preLaunchTask": "Servidor Space Impact"
+        }
+    ]
+}

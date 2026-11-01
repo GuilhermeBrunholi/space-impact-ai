@@ -1,0 +1,30 @@
+# ── Treino ──
+# arquivo temporário da gravação atômica do server.py (existe só por um instante)
+training-data/*.tmp
+
+# Para não versionar o treino (ele muda a cada geração), descomente as linhas abaixo e rode uma vez:
+#   git rm --cached -r training-data
+# training-data/*
+# !training-data/.gitkeep
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+
+# ── Editores ──
+# do VS Code, só as configurações de rodar o jogo são compartilhadas
+.vscode/*
+!.vscode/tasks.json
+!.vscode/launch.json
+# configurações locais do Claude Code (o .claude/launch.json do projeto continua versionado)
+.claude/settings.local.json
+*.swp
+*~
+
+# ── Sistema operacional ──
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ── Diversos ──
+*.log

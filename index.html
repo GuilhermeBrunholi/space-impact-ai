@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="ai-panel.css">
+    <title>Space Impact Web</title>
+</head>
+
+<body>
+    <nav>
+        <img src="./img/logo.png" alt="logo" id="logo">
+    </nav>
+    <!-- entre o topo e o rodapé: o conteúdo e, à direita, o painel da IA (o ai-panel.js o coloca aqui) -->
+    <div id="app-body">
+    <!-- duas colunas em telas largas: o jogo (e a geração em andamento) à esquerda, os gráficos da IA à direita -->
+    <main id="ai-layout">
+    <div id="ai-game-column">
+    <div id="game">
+        <canvas id="canvas-bg">Your browswer doesn't support HTML Canvas</canvas>
+        <canvas id="canvas-main"></canvas>
+        <button id="pause-button">Pause</button>
+        <button class="ingame-button" id="play">Play</button>
+        <button class="ingame-button" id="exit">Exit</button>
+    </div>
+    </div>
+    <div id="ai-side-column"></div>
+    </main>
+    </div>
+
+    <!-- rodapé: como jogar, objetivo e os botões na tela (para celular) -->
+    <footer id="game-footer">
+        <div id="info">
+            <span class="footer-label">Controles</span>
+            <span class="footer-control"><img id="arrows" src="./img/arrowKeys.png" alt="setas">mover</span>
+            <span class="footer-control"><img id="space" src="./img/spacebar.png" alt="barra de espaço">atirar</span>
+            <span class="footer-control"><img id="xKey" src="./img/special.png" alt="tecla X">especial</span>
+            <span class="footer-separator" aria-hidden="true"></span>
+            <span class="footer-label">Objetivo</span>
+            <span>Derrube as naves inimigas e sobreviva às 8 fases.</span>
+        </div>
+        <div class="toggle-container">
+            <span>Botões na tela</span>
+            <div class="toggle" role="switch" aria-checked="false" aria-label="Botões na tela" tabindex="0">
+                <div class="toggle-ball"></div>
+            </div>
+        </div>
+    </footer>
+    <div class="buttons-onscreen" oncontextmenu="return false">
+        <button type="button" id="button-left" class="button"><img src="./img/buttonLeft.png" alt=""></button>
+        <button type="button" id="button-up" class="button"><img src="./img/buttonUp.png" alt=""></button>
+        <button type="button" id="button-right" class="button"><img src="./img/buttonRight.png" alt=""></button>
+        <button type="button" id="button-down" class="button"><img src="./img/buttonDown.png" alt=""></button>
+        <button type="button" id="button-fire" class="button"><img src="./img/buttonFire.png" alt=""></button>
+        <button type="button" id="button-x" class="button"><img src="./img/buttonX.png" alt=""></button>
+    </div>
+
+    <script>
+        const toggleBar = document.querySelector(".toggle");
+        const toggleBall = document.querySelector(".toggle-ball");
+        const buttons = document.querySelector(".buttons-onscreen");
+        const info = document.querySelector("#info");
+        let flag = false;
+        function toggleOnscreenButtons() {
+            toggleBar.classList.toggle("toggle-on");
+            toggleBall.classList.toggle("toggle-ball-on");
+            flag = !flag;
+            toggleBar.setAttribute("aria-checked", String(flag));
+            // com os botões na tela, a legenda do teclado não serve: some do rodapé
+            buttons.style.display = flag ? "inline-block" : "none";
+            info.style.display = flag ? "none" : "";
+        }
+        toggleBar.addEventListener("click", toggleOnscreenButtons);
+        toggleBar.addEventListener("keydown", (e) => { if (e.key === "Enter") toggleOnscreenButtons(); });
+    </script>
+
+    <script src="game.js"></script>
+    <script src="brain-rules.js"></script>
+    <script src="brain-nn.js"></script>
+    <script src="evolution.js"></script>
+    <script src="training.js"></script>
+    <script src="ai.js"></script>
+    <script src="ai-panel.js"></script>
+    <script src="ai-telemetry.js"></script>
+
+</body>
+
+</html>
