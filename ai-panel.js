@@ -29,10 +29,30 @@ function createPanel() {
                     <button type="button" data-mode="human">Você</button>
                     <button type="button" data-mode="rules">Regras</button>
                     <button type="button" data-mode="nn">Rede</button>
+                    <button type="button" data-mode="tf">Rede TensorFlow (imitação)</button>
                 </div>
             </section>
 
-            <section class="ai-section">
+            <!-- data-modes: em quais modos de "Quem controla" a seção aparece (sem o atributo, aparece sempre) -->
+            <section class="ai-section" data-modes="human">
+                <h4>GRAVAÇÃO (VOCÊ JOGANDO)</h4>
+                <label class="ai-check"><input type="checkbox" id="ai-record-toggle"> Gravar partidas</label>
+                <div class="ai-train-buttons">
+                    <button type="button" id="ai-record-download">Baixar gravação</button>
+                    <button type="button" id="ai-record-clear">Limpar gravação</button>
+                </div>
+                <p class="ai-note" id="ai-record-count"></p>
+            </section>
+
+            <section class="ai-section" data-modes="tf">
+                <h4>TREINO (IMITAÇÃO)</h4>
+                <label class="ai-note" for="recordingFiles">Gravações (.json):</label>
+                <input type="file" id="recordingFiles" accept=".json" multiple>
+                <button type="button" id="ai-tf-train">Treinar</button>
+                <p class="ai-note" id="ai-tf-status">Carregue gravações e clique em Treinar.</p>
+            </section>
+
+            <section class="ai-section" data-modes="nn">
                 <h4>TREINO (NEUROEVOLUÇÃO)</h4>
                 <div class="ai-train-buttons">
                     <button type="button" id="ai-train-toggle">Iniciar treino</button>
@@ -64,7 +84,15 @@ function createPanel() {
                 </div>
             </section>
 
-            <section class="ai-section">
+            <section class="ai-section" data-modes="rules nn tf">
+                <h4>NAVE DA IA</h4>
+                <div class="ai-param">
+                    <label for="ai-cooldown"><span>Intervalo entre tiros</span><span id="ai-cooldown-value"></span></label>
+                    <input type="range" id="ai-cooldown" min="50" max="1000" step="50">
+                </div>
+            </section>
+
+            <section class="ai-section" data-modes="nn">
                 <h4>REDE E PARÂMETROS</h4>
                 <button type="button" id="ai-new-network"></button>
                 <div class="ai-param">
@@ -82,10 +110,6 @@ function createPanel() {
                         <label for="ai-weight-${key}">${KEY_NAMES[key]}</label>
                         <input type="range" id="ai-weight-${key}" min="-10" max="10" step="0.5">
                         <span id="ai-weight-${key}-value"></span>`).join("")}
-                </div>
-                <div class="ai-param">
-                    <label for="ai-cooldown"><span>Intervalo entre tiros</span><span id="ai-cooldown-value"></span></label>
-                    <input type="range" id="ai-cooldown" min="50" max="1000" step="50">
                 </div>
                 <div class="ai-param">
                     <label for="ai-mutation-rate"><span>Taxa de mutação</span><span id="ai-mutation-rate-value"></span></label>
@@ -112,6 +136,20 @@ function createPanel() {
     // quem controla
     panel.querySelectorAll("[data-mode]").forEach(button => {
         button.addEventListener("click", () => setBrainMode(button.dataset.mode));
+    });
+
+    // gravação
+    const recordToggle = panel.querySelector("#ai-record-toggle");
+    recordToggle.checked = recordingEnabled;
+    recordToggle.addEventListener("change", () => { recordingEnabled = recordToggle.checked; });
+    panel.querySelector("#ai-record-download").addEventListener("click", downloadRecording);
+    panel.querySelector("#ai-record-clear").addEventListener("click", clearRecording);
+
+    // treino por imitação (as funções de ML ficam no brain-tf.js; o gráfico de loss, na telemetria)
+    panel.querySelector("#recordingFiles").addEventListener("change", event => loadRecordings(event.target.files));
+    panel.querySelector("#ai-tf-train").addEventListener("click", () => {
+        resetTfLossChart();   // cada treino começa um gráfico novo
+        trainModel();
     });
 
     // fase inicial
@@ -219,6 +257,10 @@ function refreshPanel() {
     document.querySelectorAll("#ai-panel [data-mode]").forEach(button => {
         button.classList.toggle("active", button.dataset.mode === brainMode);
     });
+    document.querySelectorAll("#ai-panel [data-modes]").forEach(section => {
+        section.hidden = !section.dataset.modes.split(" ").includes(brainMode);
+    });
+    document.getElementById("ai-record-count").textContent = "Frames gravados: " + recordedFrames.length;
     document.querySelectorAll("#ai-panel [data-level]").forEach(button => {
         button.classList.toggle("active", Number(button.dataset.level) === startLevel);
     });

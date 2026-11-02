@@ -103,8 +103,10 @@ function createSpecial(level) {
     }
 }
 
-// 🧠 Quem controla a nave: "human" = você no teclado, "rules" = brain-rules.js, "nn" = brain-nn.js
+// 🧠 Quem controla a nave: "human" = você no teclado, "rules" = brain-rules.js, "nn" = brain-nn.js,
+// "tf" = brain-tf.js (rede TensorFlow que imita as suas partidas gravadas)
 let brainMode = "nn";
+let recordingEnabled = false;    // caixa "Gravar partidas": só grava no modo humano e com ela marcada
 let network = createNetwork();   // rede atual: aleatória no início, depois vem do treino
 
 const RELEASE_ALL = { up: false, down: false, left: false, right: false, fire: false, special: false };
@@ -125,20 +127,87 @@ function aiStep() {
         return RELEASE_ALL;
     }
     const state = getState();
-    const action = brainMode === "nn" ? nnDecide(state, network) : decide(state);
+    let action;
+    if (brainMode === "nn") action = nnDecide(state, network);
+    else if (brainMode === "tf") action = tfDecide(state);
+    else action = decide(state);
     act(action);
     return action;   // o treino usa para contar quanto cada tecla é apertada
 }
 
 // 🔁 Loop: a cada frame da tela, um passo (jogo normal) ou vários (treino acelerado)
 function aiLoop() {
-    if (brainMode !== "human" && !isMainScreen && !gameOver && !gamePause) {
-        if (training.active) runTrainingFrame();
-        else aiStep();
+    const gameRunning = !isMainScreen && !gameOver && !gamePause;
+
+    if (brainMode !== "human" && gameRunning) {
+        if (training.active) 
+            runTrainingFrame();
+        else 
+            aiStep();
+    }
+    else if (brainMode === "human" && gameRunning && recordingEnabled) {
+        recordStep();
     }
     requestAnimationFrame(aiLoop);
 }
 aiLoop();
+
+const recordedFrames = [];   // aqui ficam todos os frames gravados
+
+function recordStep() {
+    // 1. se a fase acabou (o jogo está controlando a nave), não grava nada
+    if (currentLevel.levelComplete) {
+        return;
+    }
+    // 2. pega o estado do jogo e transforma nos 19 números
+    const inputs = getInputs(getState());
+    
+    // 3. monta a lista das 6 ações, na MESMA ORDEM do ACTION_KEYS:
+    //    up, down, left, right, fire, special  (tudo em 0 ou 1)
+    const actions = [
+        keys.ArrowUp.pressed ? 1 : 0,
+        keys.ArrowDown.pressed ? 1 : 0,
+        keys.ArrowLeft.pressed ? 1 : 0,
+        keys.ArrowRight.pressed ? 1 : 0,
+        shotFiredThisFrame ? 1 : 0,
+        specialFiredThisFrame ? 1 : 0,
+    ];
+
+    // 4. guarda no recordedFrames: { level, inputs, actions }
+    recordedFrames.push({ level: currentLevel.number, inputs: inputs, actions });
+
+    // 5. desmarca o tiro e o especial, para não contaminar o próximo frame
+    shotFiredThisFrame = 0;
+    specialFiredThisFrame = 0;
+}
+
+function downloadRecording() {
+    // 1. transforma o recordedFrames em texto JSON
+    const text = JSON.stringify(recordedFrames);
+
+    // 2. cria um Blob com esse texto, do tipo "application/json"
+    const blobJson = new Blob([text], { type: "application/json" });
+
+    // 3. gera um endereço (URL) para esse Blob
+    const url = URL.createObjectURL(blobJson);
+
+    // 4. cria um link <a>, coloca o endereço no href,
+    //    o nome do arquivo no download, e "clica" nele pelo código
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `recording-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.json`;
+    document.body.appendChild(link);
+    link.click();
+
+    // 5. libera o endereço da memória (URL.revokeObjectURL)
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// esvazia a gravação (é const, então zera o tamanho em vez de criar outra lista)
+function clearRecording() {
+    recordedFrames.length = 0;
+}
 
 // Fase 0: só observar
 // setInterval(() => {

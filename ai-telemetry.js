@@ -14,6 +14,8 @@ const HEATMAP_GENERATIONS = 60;   // quantas gerações o mapa de calor mostra (
 
 let telemetryColors = null;
 let staticChartsKey = "";   // os gráficos de gerações só são redesenhados quando algo muda
+const tfLoss = { epochs: [], total: 0 };   // treino por imitação: { loss, valLoss } de cada epoch e o total de epochs
+let tfLossKey = "";         // o gráfico de loss também só é redesenhado quando algo muda
 
 function createTelemetry() {
     // embaixo do jogo: o que está acontecendo agora
@@ -84,6 +86,21 @@ function createTelemetry() {
             </article>
         </div>`;
 
+    // no painel, junto do treino por imitação: fica dentro da seção do modo TF, então só aparece nesse modo
+    const tfCard = document.createElement("article");
+    tfCard.className = "tl-card";
+    tfCard.innerHTML = `
+        <h4 title="Loss é o erro da rede: quanto menor, mais ela acerta as teclas que você apertou. A validação usa 20% dos frames que a rede não vê no treino.">ERRO POR EPOCH (LOSS)</h4>
+        <div class="tl-numbers tl-tf-numbers">
+            <div><span>epoch</span><strong id="tl-tf-epoch">-</strong></div>
+            <div><span>loss</span><strong id="tl-tf-loss">-</strong></div>
+            <div><span>val_loss</span><strong id="tl-tf-val-loss">-</strong></div>
+        </div>
+        <canvas id="tl-tf-chart" class="tl-canvas" aria-label="Loss de treino e de validação por epoch"></canvas>
+        <p class="tl-note"><span class="tl-key" style="background:var(--lcd)"></span>loss (treino)
+            <span class="tl-key" style="background:var(--hot)"></span>val_loss (validação)</p>`;
+    document.getElementById("ai-tf-status").after(tfCard);
+
     progress.querySelector("#tl-actions").innerHTML = ACTION_KEYS.map(key => `
         <div class="ai-row" id="tl-action-${key}">
             <span class="label">${ACTION_LABELS[key]}</span>
@@ -113,6 +130,7 @@ function createTelemetry() {
 function refreshTelemetry() {
     refreshProgress();
     drawNetwork();
+    refreshTfLoss();
 
     const last = training.history[training.history.length - 1];
     // o tamanho da janela entra na chave: os gráficos esticam com ela e precisam ser redesenhados
@@ -169,6 +187,34 @@ function refreshProgress() {
         row.querySelector(".fill").style.width = (share === null ? 0 : share * 100) + "%";
         row.querySelector(".value").textContent = share === null ? "-" : Math.round(share * 100) + "%";
     });
+}
+
+// Chamado ao clicar em "Treinar": o gráfico de loss recomeça do zero
+function resetTfLossChart() {
+    tfLoss.epochs = [];
+    tfLoss.total = 0;
+}
+
+// Chamado no onEpochEnd do trainModel com os logs do fit
+function addTfLossEpoch(epoch, logs, totalEpochs) {
+    tfLoss.epochs[epoch] = { loss: logs.loss, valLoss: logs.val_loss };
+    tfLoss.total = totalEpochs;
+    refreshTfLoss();
+}
+
+function refreshTfLoss() {
+    const last = tfLoss.epochs[tfLoss.epochs.length - 1];
+    setText("tl-tf-epoch", last ? tfLoss.epochs.length + "/" + tfLoss.total : "-");
+    setText("tl-tf-loss", last ? last.loss.toFixed(4) : "-");
+    setText("tl-tf-val-loss", last ? last.valLoss.toFixed(4) : "-");
+
+    // o tamanho entra na chave: com a seção escondida o canvas mede 0, e precisa ser redesenhado quando ela aparece
+    const canvas = document.getElementById("tl-tf-chart");
+    const key = [tfLoss.epochs.length, canvas.clientWidth, canvas.clientHeight].join("|");
+    if (key !== tfLossKey) {
+        tfLossKey = key;
+        drawTfLoss();
+    }
 }
 
 function setText(id, text) {
@@ -240,6 +286,57 @@ function drawEvolution() {
         ctx.beginPath();
         history.forEach((h, i) => (i === 0 ? ctx.moveTo(x(i), y(h[field])) : ctx.lineTo(x(i), y(h[field]))));
         ctx.stroke();
+        ctx.lineWidth = 1;
+    });
+}
+
+// Loss de treino e de validação por epoch. O eixo x vai até o total de epochs: a linha cresce conforme o treino anda
+function drawTfLoss() {
+    const chart = prepareCanvas("tl-tf-chart");
+    const { ctx, width, height } = chart;
+    const epochs = tfLoss.epochs;
+    if (epochs.length === 0) return emptyMessage(chart, "Aparece no fim da 1ª epoch.");
+
+    // o eixo y vai do menor ao maior valor (com folga): as diferenças de loss costumam ser pequenas
+    const values = epochs.flatMap(e => [e.loss, e.valLoss]);
+    const margin = (Math.max(...values) - Math.min(...values)) * 0.1 || Math.max(...values) * 0.1 || 0.01;
+    const low = Math.max(0, Math.min(...values) - margin);
+    const high = Math.max(...values) + margin;
+
+    const pad = { left: 44, right: 8, top: 10, bottom: 18 };
+    const x = i => pad.left + (i / Math.max(1, tfLoss.total - 1)) * (width - pad.left - pad.right);
+    const y = v => height - pad.bottom - ((v - low) / (high - low)) * (height - pad.top - pad.bottom);
+
+    // grade com 3 linhas de referência
+    ctx.textAlign = "right";
+    [0, 0.5, 1].forEach(f => {
+        const v = low + (high - low) * f;
+        ctx.strokeStyle = telemetryColors.line;
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y(v));
+        ctx.lineTo(width - pad.right, y(v));
+        ctx.stroke();
+        ctx.fillStyle = telemetryColors.muted;
+        ctx.fillText(v.toFixed(3), pad.left - 6, y(v));
+    });
+    ctx.textAlign = "left";
+    ctx.fillText("epoch 1", pad.left, height - 7);
+    ctx.textAlign = "right";
+    ctx.fillText("epoch " + tfLoss.total, width - pad.right, height - 7);
+
+    // linha + bolinha em cada epoch (com uma epoch só, a bolinha é o que aparece)
+    [["loss", telemetryColors.lcd], ["valLoss", telemetryColors.hot]].forEach(([field, color]) => {
+        ctx.strokeStyle = color;
+        ctx.fillStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        epochs.forEach((e, i) => (i === 0 ? ctx.moveTo(x(i), y(e[field])) : ctx.lineTo(x(i), y(e[field]))));
+        ctx.stroke();
+        epochs.forEach((e, i) => {
+            ctx.beginPath();
+            ctx.arc(x(i), y(e[field]), 2.5, 0, Math.PI * 2);
+            ctx.fill();
+        });
         ctx.lineWidth = 1;
     });
 }

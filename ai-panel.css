@@ -47,7 +47,7 @@
     color: var(--lcd);
 }
 .ai-body { display: grid; gap: 12px; padding: 10px; }
-.ai-section { display: grid; gap: 4px; }
+.ai-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }   /* minmax: conteúdo largo (ex.: campo de arquivo) não estica o painel */
 .ai-section h4 {
     font-family: 'Silkscreen', monospace;
     font-weight: 400;
@@ -71,6 +71,25 @@
 #ai-panel button:focus-visible, #ai-panel input:focus-visible { outline: 2px solid var(--lcd); outline-offset: 1px; }
 
 .ai-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+#ai-panel .ai-modes button[data-mode="tf"] { grid-column: 1 / -1; }   /* rótulo longo: linha inteira */
+#ai-panel .ai-section[hidden] { display: none; }
+
+/* gravação e treino por imitação */
+.ai-check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.ai-check input { accent-color: var(--lcd); width: 14px; height: 14px; }
+#recordingFiles { font-family: 'VT323', monospace; font-size: 16px; color: var(--panel-muted); max-width: 100%; }
+#recordingFiles::file-selector-button {
+    font-family: 'VT323', monospace;
+    font-size: 18px;
+    color: var(--panel-fg);
+    background: transparent;
+    border: 1px solid var(--panel-line);
+    border-radius: 4px;
+    padding: 2px 8px;
+    margin-right: 6px;
+    cursor: pointer;
+}
+#recordingFiles::file-selector-button:hover { border-color: var(--lcd); }
 #ai-panel .ai-modes button.active,
 #ai-panel .ai-levels button.active,
 #ai-panel #ai-turbo.active { background: var(--lcd); color: #1b2117; border-color: var(--lcd); }
@@ -185,11 +204,11 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 #app-body { flex: 1; display: flex; align-items: stretch; }
 #ai-layout { flex: 1; min-width: 0; }
 
-/* Em telas largas o jogo encolhe para 680 px (o canvas continua 840×480 por dentro; só é desenhado menor),
+/* Em telas largas o jogo encolhe para 560 px (o canvas continua 840×480 por dentro; só é desenhado menor),
    os gráficos ganham o resto da largura e esticam para preencher a altura.
-   680 do jogo + ~480 dos gráficos + 300 do painel + margens. */
+   560 do jogo + ~600 dos gráficos + 300 do painel + margens. */
 @media (min-width: 1500px) {
-    body.ai-panel-open #ai-layout { grid-template-columns: 680px minmax(0, 1fr); }
+    body.ai-panel-open #ai-layout { grid-template-columns: 560px minmax(0, 1fr); }
     body.ai-panel-open #ai-game-column,
     body.ai-panel-open #ai-side-column { display: flex; flex-direction: column; }
     body.ai-panel-open #tl-progress { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
@@ -199,7 +218,7 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
     body.ai-panel-open #ai-side-column .tl-canvas { flex: 1 1 0; height: auto; min-height: 90px; }
 }
 @media (min-width: 1200px) {
-    body:not(.ai-panel-open) #ai-layout { grid-template-columns: 680px minmax(0, 1fr); }
+    body:not(.ai-panel-open) #ai-layout { grid-template-columns: 560px minmax(0, 1fr); }
     body:not(.ai-panel-open) #ai-game-column,
     body:not(.ai-panel-open) #ai-side-column { display: flex; flex-direction: column; }
     body:not(.ai-panel-open) #tl-progress { flex: 1; display: flex; flex-direction: column; justify-content: space-around; }
@@ -240,6 +259,7 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 .tl-canvas.tall { height: 440px; }   /* 19 entradas: ~22 px por linha, para os rótulos não se sobreporem */
 
 .tl-numbers { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+.tl-numbers.tl-tf-numbers { grid-template-columns: repeat(3, 1fr); }   /* treino por imitação: epoch, loss, val_loss */
 .tl-numbers div { border: 1px solid var(--panel-line); border-radius: 4px; padding: 2px; }
 .tl-numbers span { display: block; font-size: 14px; color: var(--panel-muted); }
 .tl-numbers strong { font-weight: 400; font-size: 22px; font-variant-numeric: tabular-nums; white-space: nowrap; }

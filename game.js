@@ -54,6 +54,7 @@ const keys = {
         pressed: false
     }
 }
+
 let gameOver = false;
 let gamePause = false;
 let isLevelDark = true;
@@ -62,6 +63,8 @@ let specialCount = 3;
 let lives = 4;
 const maxLives = 7;
 let playerScore = 0;
+let shotFiredThisFrame = 0;
+let specialFiredThisFrame = 0;
 
 class InputHandler {
     constructor(level) {
@@ -88,11 +91,12 @@ class InputHandler {
                     if (!keys.space.pressed) {
                         this.level.playerProjectiles.push(new Projectile(true, this.level.player));
                         keys.space.pressed = true;
+                        shotFiredThisFrame = 1;
                     }
                     break;
                 case "X":
                 case "x":
-                    if (!keys.x.pressed) {
+                      if (!keys.x.pressed) {
                         if (specialCount > 0) {
                             switch (specialAtttack) {
                                 case "missile": this.level.playerSpecial.push(new Missile(this.level));
@@ -103,6 +107,7 @@ class InputHandler {
                                     break;
                             }
                             specialCount--;
+                            specialFiredThisFrame = 1;
                         }
                         keys.x.pressed = true;
                     }
@@ -2914,7 +2919,7 @@ function mainScreen() {
 }
 
 function animate(timestamp) {
-    let deltaTime = timestamp - lastTime;
+    let deltaTime =  timestamp - lastTime;
     lastTime = timestamp;
 
     if (isMainScreen) mainScreen();
