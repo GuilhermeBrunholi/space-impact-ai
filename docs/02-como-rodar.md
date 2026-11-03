@@ -66,6 +66,12 @@ O servidor **continua rodando** depois de fechar o navegador. Para parar: `Ctrl+
 Mantenha a aba **visível** enquanto treina: navegadores quase congelam abas escondidas (`requestAnimationFrame`
 desacelera para ~1 quadro por segundo), e o treino cai junto.
 
+## Opcional: imitação com TensorFlow.js
+
+O modo **Rede TensorFlow (imitação)** usa a biblioteca `tf.min.js`, carregada de um CDN (`cdn.jsdelivr.net`) no fim do
+`index.html`: precisa de **internet**. Os outros modos não dependem dela. Como gravar e treinar:
+[13 — Imitação com TensorFlow](13-imitacao-tensorflow.md).
+
 ## Opcional: deixar o Claude jogar (MCP)
 
 Precisa de Python 3 com um ambiente virtual e do Edge ou Chrome. A instalação e o uso estão em

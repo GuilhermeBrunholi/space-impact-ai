@@ -53,6 +53,12 @@
 | **Subagente** | outra instância do Claude, chamada para uma tarefa (aqui, jogar uma partida) |
 | **Clonagem de comportamento** | treinar a rede para repetir as jogadas de um demonstrador, como se fossem as respostas certas |
 | **Demonstração** | um exemplo `(entradas → teclas)` gravado de uma partida do Claude |
+| **Aprendizado por imitação** | treinar a rede para repetir as jogadas de quem jogou (aqui, você); ver [13](13-imitacao-tensorflow.md) |
+| **TensorFlow.js (`tf`)** | biblioteca de redes neurais para o navegador; o `brain-tf.js` a usa, carregada de um CDN |
+| **Epoch** | uma passada completa do treino por todos os exemplos gravados |
+| **Loss / val_loss** | erro da rede nos frames de treino / nos 20% reservados para conferir; `val_loss` subindo com a `loss` caindo = decorando |
+| **Limite calibrado** | limite por tecla, ajustado para a rede apertar na mesma proporção que o jogador (`tfThresholds`) |
+| **Atraso de reação** | os 12 frames (`REACTION_DELAY`) entre ver a situação e apertar a tecla, aplicados nos dados de imitação |
 | **Origin / Host** | cabeçalhos HTTP que dizem de que site veio um pedido e a que endereço ele foi; o `server.py` os confere |
 | **DNS rebinding** | ataque em que um site malicioso faz o nome dele apontar para `localhost`, para falar com servidores locais |
 | **Telemetria** | dados coletados durante o treino e mostrados em gráficos |

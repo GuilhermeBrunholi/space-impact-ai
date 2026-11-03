@@ -64,9 +64,10 @@ O que ela **não** é:
 | Supervisionado | sim | sim | milhares a milhões | reconhecer dígitos escritos à mão |
 | IA generativa (LLM) | sim | sim, prever a próxima palavra | bilhões | ChatGPT, Claude |
 
-## Princípio: o jogo não é modificado
+## Princípio: o jogo quase não é modificado
 
-`game.js` é o jogo original e permanece intacto. A IA o controla **por fora**, do mesmo jeito que um humano:
+`game.js` é o jogo original. A única edição são duas variáveis, `shotFiredThisFrame` e `specialFiredThisFrame`, que o
+`keydown` marca ao criar um tiro/especial para a gravação de partidas ([13](13-imitacao-tensorflow.md#gravação-aijs)). Fora isso, a IA o controla **por fora**, do mesmo jeito que um humano:
 
 - **lê** variáveis globais que o jogo já expõe (`currentLevel`, `lives`, `playerScore`, `specialCount`…);
 - **escreve** no mesmo objeto `keys` que o teclado escreve (`keys.ArrowUp.pressed = true`);
@@ -99,13 +100,14 @@ sequenceDiagram
 
 ## Quem controla a nave
 
-O painel tem três modos (`brainMode` em `ai.js`):
+O painel tem quatro modos (`brainMode` em `ai.js`):
 
 | Modo | Valor | O que acontece |
 |---|---|---|
 | Você | `"human"` | A IA não mexe em nada; o teclado controla |
 | Regras | `"rules"` | `decide(state)` de `brain-rules.js` escolhe as teclas |
-| Rede | `"nn"` | `nnDecide(state, network)` de `brain-nn.js` escolhe as teclas (é o único modo que treina) |
+| Rede | `"nn"` | `nnDecide(state, network)` de `brain-nn.js` escolhe as teclas (é o único modo que treina por evolução) |
+| Rede TensorFlow | `"tf"` | `tfDecide(state)` de `brain-tf.js`: rede treinada para imitar as suas partidas gravadas ([13](13-imitacao-tensorflow.md)) |
 
 ## Ordem de carregamento dos scripts
 
@@ -117,11 +119,13 @@ chamadas depois).
 <script src="game.js"></script>          <!-- o jogo: Level, Player, keys, currentLevel, enemiesLvl1..8 -->
 <script src="brain-rules.js"></script>   <!-- decide(), isThreat() -->
 <script src="brain-nn.js"></script>      <!-- getInputs(), createNetwork(), predict(), nnDecide(), actionWeights -->
+<script src="brain-tf.js"></script>      <!-- tfDecide(), loadRecordings(), trainModel() — imitação -->
 <script src="evolution.js"></script>     <!-- genomas, seleção, cruzamento, mutação, WEIGHT_LIMIT, conserto -->
 <script src="training.js"></script>      <!-- training, resetGame(), nota, turbo, salvar/carregar -->
 <script src="ai.js"></script>            <!-- getState(), act(), aiStep(), aiLoop() — começa o loop -->
 <script src="ai-panel.js"></script>      <!-- painel de controle -->
 <script src="ai-telemetry.js"></script>  <!-- telemetria -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>  <!-- tf, só usado pelo brain-tf.js -->
 ```
 
 Detalhes que dependem dessa ordem:
@@ -142,6 +146,7 @@ flowchart TB
     subgraph Cérebros
         rules[brain-rules.js]
         nn[brain-nn.js]
+        tf[brain-tf.js]
     end
     subgraph Aprendizado
         evo[evolution.js]
@@ -161,6 +166,7 @@ flowchart TB
     ai -->|lê estado, escreve keys| game
     ai --> rules
     ai --> nn
+    ai --> tf
     train -->|resetGame, update| game
     train --> evo
     evo --> nn
@@ -177,7 +183,7 @@ Em telas largas (a partir de 1200 px) a página ocupa exatamente a altura da jan
 
 ```
 ┌──────────────────────────── barra do topo ─────────────────────────────┐
-│ jogo (680 px)            │ rede neural ao vivo             │ Painel da │
+│ jogo (560 px)            │ rede neural ao vivo             │ Painel da │
 │                          │─────────────────┬───────────────│ IA        │
 │ treino · geração em      │ evolução da nota│ pontuação/fase│ (rola por │
 │ andamento                │─────────────────┼───────────────│ dentro)   │

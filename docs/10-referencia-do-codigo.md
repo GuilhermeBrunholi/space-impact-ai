@@ -9,7 +9,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 ---
 
-## Do `game.js` (usado pela IA, não modificado)
+## Do `game.js` (usado pela IA)
 
 | Nome | Tipo | Usado para |
 |---|---|---|
@@ -22,6 +22,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `enemiesLvl1` … `enemiesLvl8` | arrays de ondas `{ time, object: [...] }` | inimigos de cada fase |
 | `checkCollision(a, b)` | função | colisão de retângulos |
 | `gameStart()` | função | sai da tela inicial |
+| `shotFiredThisFrame`, `specialFiredThisFrame` | globais (0/1) | **acrescentadas para a IA**: o `keydown` põe 1 ao criar um tiro/especial; `recordStep()` lê e zera |
 
 ---
 
@@ -37,12 +38,34 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `lastFireFrame`, `lastSpecialFrame` | frame do último tiro / especial |
 | `act(action)` | aplica `{ up, down, left, right, fire, special }`: escreve em `keys`, cria tiros e especiais respeitando intervalos e munição |
 | `createSpecial(level)` | cria `Missile`, `Laser` ou `Wall` conforme `specialAtttack` |
-| `brainMode` | `"human"`, `"rules"` ou `"nn"` |
+| `brainMode` | `"human"`, `"rules"`, `"nn"` ou `"tf"` |
+| `recordingEnabled` | caixa **Gravar partidas** marcada |
+| `recordedFrames` | lista de `{ level, inputs, actions }` gravada no modo `"human"` |
+| `recordStep()` | grava o frame atual (não grava com a fase vencida) e zera `shotFiredThisFrame`/`specialFiredThisFrame` |
+| `downloadRecording()`, `clearRecording()` | baixa `recording-….json` / esvazia a lista |
 | `network` | a rede que joga no modo `"nn"` |
 | `RELEASE_ALL` | ação com todas as teclas soltas |
 | `setBrainMode(mode)` | troca o cérebro; sair de `"nn"` pausa o treino; `"human"` solta as teclas |
-| `aiStep()` | um passo: sensores → cérebro → `act()`; com fase vencida, solta tudo. Devolve a ação (o treino conta as teclas) |
-| `aiLoop()` | roda a cada quadro da tela: `runTrainingFrame()` se treinando, senão `aiStep()` |
+| `aiStep()` | um passo: sensores → cérebro (`nnDecide`, `tfDecide` ou `decide`) → `act()`; com fase vencida, solta tudo. Devolve a ação (o treino conta as teclas) |
+| `aiLoop()` | roda a cada quadro da tela: `runTrainingFrame()` se treinando, senão `aiStep()`; no modo `"human"` com gravação ligada, `recordStep()` |
+
+## `brain-tf.js` — imitação com TensorFlow.js
+
+Detalhes em [13](13-imitacao-tensorflow.md).
+
+| Nome | Descrição |
+|---|---|
+| `tfModel` | o modelo treinado (`null` = ainda não treinou) |
+| `tfThresholds` | limite de cada tecla, na ordem de `ACTION_KEYS` |
+| `REACTION_DELAY` (12) | frames entre ver a situação e apertar a tecla |
+| `setTfStatus(text)` | escreve na linha de status do painel |
+| `tfDecide(state)` | 6 notas do modelo → teclas acima do limite; sem modelo, solta tudo |
+| `loadRecordings(files)` | lê os `.json` e devolve `{ level, inputs, actions }` com o atraso de reação aplicado |
+| `buildDataset(frames)` | frames → tensores `xs` (N×19) e `ys` (N×6) |
+| `createModel()` | `tf.sequential` 19 → 32 (relu) → 16 (relu) → 6 (sigmoid); `adam` + `binaryCrossentropy` |
+| `trainModel()` | carrega, embaralha, treina 20 epochs (lote 64, 20% de validação) e calibra os limites |
+| `calibrateThresholds(frames)` | um limite por tecla para apertar na mesma proporção que o jogador (`pressThreshold` se houver < 50 exemplos) |
+| `shuffleFrames(frames)` | embaralha no lugar (Fisher-Yates) |
 
 ## `brain-rules.js` — cérebro de regras
 
@@ -192,10 +215,10 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `INPUT_LABELS` | nomes das 19 entradas (usados na telemetria) |
 | `SPECIAL_NAMES`, `KEY_NAMES` | nomes em português |
 | `PANEL_REFRESH_MS` (100) | intervalo de atualização |
-| `createPanel()` | monta o painel dentro de `#app-body` e liga os controles |
+| `createPanel()` | monta o painel dentro de `#app-body` e liga os controles (inclusive gravação e treino TF; seções com `data-modes`) |
 | `bindSlider(id, getValue, setValue, format)` | liga um slider a uma variável |
 | `countWeights(net)` | número de pesos da rede (162) |
-| `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões |
+| `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões; `refreshPanel` também mostra/esconde as seções conforme `data-modes` e atualiza "Frames gravados" |
 
 ## `ai-telemetry.js` — telemetria
 
@@ -211,6 +234,9 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `setText(id, text)`, `formatDuration(seconds)` | utilitários |
 | `prepareCanvas(id)` | ajusta resolução (inclusive densidade de pixels) e limpa |
 | `emptyMessage(chart, text)` | mensagem quando ainda não há dados |
+| `tfLoss`, `tfLossKey` | loss por epoch do treino por imitação e a chave que decide quando redesenhar |
+| `resetTfLossChart()`, `addTfLossEpoch(epoch, logs, total)`, `refreshTfLoss()` | recomeça o gráfico / registra uma epoch (chamada pelo `trainModel`) / atualiza números e desenho |
+| `drawTfLoss()` | curvas de `loss` e `val_loss` por epoch |
 | `drawEvolution()` | linhas de melhor e média |
 | `mixColor(a, b, t)` | mistura duas cores hex |
 | `drawHeatmap()` | mapa de calor fase × geração |
@@ -224,7 +250,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 |---|---|
 | Variáveis em `#ai-panel, #ai-layout` | cores: `--panel-*`, `--chart-bg`, `--lcd`, `--hot`, `--bad`, `--end-*` (uma por motivo de fim) |
 | `#ai-panel` | painel flutuante (< 1200 px) ou coluna (≥ 1200 px) |
-| `#app-body`, `#ai-layout`, colunas | layout de altura total, jogo em 680 px nas telas largas, gráficos que esticam |
+| `#app-body`, `#ai-layout`, colunas | layout de altura total, jogo em 560 px nas telas largas, gráficos que esticam |
 | `#game-footer` | rodapé |
 | `.tl-*` | cards e gráficos da telemetria |
 
@@ -263,7 +289,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 | Arquivo | Conteúdo |
 |---|---|
-| `build_docs.py` | junta `docs/README.md`, `docs/01…12-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `</script` escapado) |
+| `build_docs.py` | junta `docs/README.md`, `docs/01…13-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `</script` escapado) |
 | `docs-template.html` | o modelo da página: estilos, sumário lateral e o script que, no navegador, converte o Markdown com o marked.js, cria os ids dos títulos no estilo do GitHub (prefixados pelo nome do documento), troca links `06-treino.md#…` por âncoras da própria página e desenha os diagramas Mermaid |
 
 ## `.vscode/`

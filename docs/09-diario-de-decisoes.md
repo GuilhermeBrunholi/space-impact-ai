@@ -252,9 +252,28 @@ Várias rodadas a partir de prints do usuário:
 2. duas colunas (jogo + gráficos) e painel enxuto (as barras de entradas/saídas saíram porque o diagrama da rede já
    mostra os mesmos valores);
 3. controles, descrição e "botões na tela" no **rodapé**;
-4. jogo em **680 px** e gráficos esticando para preencher a altura;
+4. jogo em **680 px** (depois reduzido para **560 px**, para dar mais largura aos gráficos) e gráficos esticando para preencher a altura;
 5. o painel flutuante (`position: fixed`) cortava a barra do topo e cobria o rodapé → virou uma **coluna de verdade**
    entre topo e rodapé.
+
+---
+
+## Imitar o jogador com TensorFlow.js
+
+Depois da neuroevolução e da clonagem das jogadas do Claude, entrou um terceiro caminho: **você** joga, o jogo grava, e uma
+rede de TensorFlow.js aprende a imitar. Decisões e motivos:
+
+| Decisão | Motivo |
+|---|---|
+| Gravar **as mesmas 19 entradas** da rede da evolução | a mesma interface de sensores vale para todos os cérebros |
+| Ligar o frame `i` à ação do frame `i + 12` (`REACTION_DELAY`) | uma pessoa reage depois de ver; sem o atraso, a rede aprenderia o que o jogador *já estava fazendo* |
+| `shotFiredThisFrame` / `specialFiredThisFrame` no `game.js` | tiro e especial são eventos (segurar a barra não atira de novo), e `keys.*.pressed` não mostra o disparo; é a única edição no jogo |
+| 20% de validação e gráfico de `loss`/`val_loss` | ver se a rede generaliza ou só decora |
+| Um limite calibrado por tecla | teclas raras (especial) nunca passariam de um limite fixo; o limite é escolhido para a rede apertar na mesma proporção que o jogador |
+| Modelo guardado só na memória | por enquanto não há salvar/carregar o modelo: ele não entra no `training.json` da evolução, e recarregar a página exige treinar de novo |
+| Painel por modo (`data-modes`) | com 4 cérebros e muitos controles, cada modo mostra só o que usa |
+
+Detalhes em [13](13-imitacao-tensorflow.md).
 
 ---
 

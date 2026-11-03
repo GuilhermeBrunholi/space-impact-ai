@@ -5,10 +5,10 @@ resposta aponta para o documento que explica o assunto por inteiro.
 
 ## Receitas
 
-### Comparar os três jeitos de jogar
+### Comparar os jeitos de jogar
 
-No painel, em **Quem controla**: **Você** (teclado), **Regras** (`brain-rules.js`, `if`s escritos à mão) e **Rede**
-(`brain-nn.js`). Use as **Regras** como régua: se a rede treinada não ganha delas, o treino ainda não achou nada de
+No painel, em **Quem controla**: **Você** (teclado), **Regras** (`brain-rules.js`, `if`s escritos à mão), **Rede**
+(`brain-nn.js`, treinada por evolução) e **Rede TensorFlow** (`brain-tf.js`, treinada para imitar as suas partidas). Use as **Regras** como régua: se a rede treinada não ganha delas, o treino ainda não achou nada de
 útil. Ver [01](01-visao-geral.md#quem-controla-a-nave).
 
 ### Treinar e acompanhar
@@ -77,6 +77,12 @@ Aprovar o servidor `space-impact` no Claude Code e pedir para ele jogar ([11](11
 ### Atualizar esta documentação
 
 Edite os `.md` de `docs/` e rode `python tools/build_docs.py`. Nunca edite `docs/documentacao.html` à mão.
+
+### Ensinar a nave imitando você
+
+**Você** → marque **Gravar partidas** e jogue → **Baixar gravação**. Depois **Rede TensorFlow (imitação)** → escolha os
+arquivos → **Treinar**. Passo a passo, limites e o que significam `loss` e `val_loss` em
+[13](13-imitacao-tensorflow.md).
 
 ## Parâmetros: o que cada número controla
 

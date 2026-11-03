@@ -11,8 +11,33 @@ Ambos se atualizam a cada 100 ms (`PANEL_REFRESH_MS`).
 
 ### Quem controla
 
-`Você` / `Regras` / `Rede` — troca o cérebro (`setBrainMode`). Sair de `Rede` pausa o treino; ir para `Você` solta
-as teclas que a IA estava segurando.
+`Você` / `Regras` / `Rede` / `Rede TensorFlow (imitação)` — troca o cérebro (`setBrainMode`). Sair de `Rede` pausa o
+treino; ir para `Você` solta as teclas que a IA estava segurando.
+
+As seções abaixo têm o atributo `data-modes` e **só aparecem nos modos listados** (`refreshPanel` esconde as outras):
+
+| Seção | Aparece em |
+|---|---|
+| Gravação (você jogando) | Você |
+| Treino (imitação) | Rede TensorFlow |
+| Treino (neuroevolução) | Rede |
+| Nave da IA | Regras, Rede, Rede TensorFlow |
+| Rede e parâmetros | Rede |
+| Quem controla, Jogo | sempre |
+
+### Gravação (você jogando)
+
+| Controle | O que faz |
+|---|---|
+| Gravar partidas | liga a gravação de frames (`recordingEnabled`) |
+| Baixar gravação | baixa um `recording-….json` com os frames |
+| Limpar gravação | esvazia `recordedFrames` |
+| Frames gravados | quantos frames já estão na memória |
+
+### Treino (imitação)
+
+**Gravações (.json)** escolhe os arquivos, **Treinar** ajusta a rede e a linha de status mostra o progresso, com o
+gráfico de loss logo abaixo. Detalhes em [13](13-imitacao-tensorflow.md).
 
 ### Treino (neuroevolução)
 
@@ -32,6 +57,12 @@ as teclas que a IA estava segurando.
 Fase, vidas e pontos atuais; arma especial equipada e munição; e os botões **1–8** da **fase inicial** — para jogar
 e para "Assistir a melhor". O treino ignora essa escolha e sempre passa pelas 8 fases.
 
+### Nave da IA
+
+| Controle | Variável | Faixa | Efeito |
+|---|---|---|---|
+| Intervalo entre tiros | `fireCooldown` | 50 – 1000 ms | ritmo máximo de tiro (vale para Regras, Rede e Rede TensorFlow) |
+
 ### Rede e parâmetros
 
 | Controle | Variável | Faixa | Efeito |
@@ -40,7 +71,6 @@ e para "Assistir a melhor". O treino ignora essa escolha e sempre passa pelas 8 
 | Neurônios escondidos | `HIDDEN_COUNT` | 2 – 32 | tamanho da camada escondida; vale ao soltar o slider e converte todas as redes do treino ([04](04-rede-neural.md#número-de-neurônios-escondidos-configurável)) |
 | Limite para apertar | `pressThreshold` | 0,1 – 0,9 | saída acima disso = tecla apertada |
 | Peso de cada tecla | `actionWeights` | −10 – +10 | empurrão fixo em cada saída ([04](04-rede-neural.md#peso-de-cada-tecla-actionweights)) |
-| Intervalo entre tiros | `fireCooldown` | 50 – 1000 ms | ritmo máximo de tiro |
 | Taxa de mutação | `mutationRate` | 1% – 50% | chance de cada peso mudar |
 | Força da mutação | `mutationStrength` | 0,05 – 2 | tamanho da mudança |
 
@@ -112,6 +142,12 @@ informação ou controle sobre o terreno; muita morte por tiro = falta desviar/d
 As 30 notas da última geração, da maior para a menor. As 2 primeiras (verde claro) são a **elite**, que passa intacta.
 Uma "escada" suave = população diversa; um bloco todo igual = população convergiu (todas parecidas).
 
+### Erro por epoch (loss) — só no modo TensorFlow
+
+Fica no painel, dentro da seção de treino por imitação (`ai-telemetry.js`). Mostra `epoch`, `loss` e `val_loss` e, abaixo, as
+duas curvas por epoch (verde = treino, vermelho = validação), com o eixo x indo até o total de epochs. Recomeça a cada
+clique em **Treinar**. O significado de cada curva está em [13](13-imitacao-tensorflow.md#treinar).
+
 ## Layout
 
 A página é montada em três faixas: barra do topo, conteúdo (`#app-body`) e rodapé.
@@ -130,7 +166,7 @@ A página é montada em três faixas: barra do topo, conteúdo (`#app-body`) e r
 
 | Largura da janela | Comportamento |
 |---|---|
-| ≥ 1500 px (painel aberto) ou ≥ 1200 px (painel recolhido) | duas colunas de conteúdo: jogo com **680 px** e gráficos com o resto; os gráficos **esticam** para preencher a altura |
+| ≥ 1500 px (painel aberto) ou ≥ 1200 px (painel recolhido) | duas colunas de conteúdo: jogo com **560 px** e gráficos com o resto; os gráficos **esticam** para preencher a altura |
 | ≥ 1200 px | a página tem a altura exata da janela; o painel é uma coluna de 300 px; conteúdo e painel **rolam cada um por dentro** |
 | < 1200 px | uma coluna (jogo com até 840 px, gráficos embaixo); o painel volta a **flutuar** à direita e pode ser recolhido |
 | < 760 px | os gráficos ficam um embaixo do outro, e os números do progresso passam de 7 para 4 colunas |
