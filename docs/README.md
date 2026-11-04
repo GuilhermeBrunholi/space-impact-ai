@@ -4,8 +4,9 @@ Esta pasta explica **tudo** o que foi construído em cima do jogo original para 
 para jogar Space Impact: dos sensores até a evolução das redes neurais, o treino, a telemetria e as decisões tomadas
 pelo caminho (inclusive os erros e como foram descobertos).
 
-O jogo em si (`game.js`, `style.css`, imagens) é o projeto original e **não foi modificado**. Toda a IA vive em
-arquivos próprios que leem e controlam o jogo "por fora".
+O jogo em si (`game.js`, `style.css`, imagens) é o projeto original. A única mudança no `game.js` são duas variáveis
+(`shotFiredThisFrame`, `specialFiredThisFrame`) que a gravação de partidas usa; o resto da IA vive em arquivos próprios
+que leem e controlam o jogo "por fora".
 
 ## Versão em HTML
 
@@ -37,6 +38,7 @@ python tools/build_docs.py
 | Consultar uma função específica | [10 — Referência do código](10-referencia-do-codigo.md) |
 | Ver o Claude jogando pelo servidor MCP e o que se aprendeu com isso | [11 — Claude jogando (MCP)](11-claude-jogando-mcp.md) |
 | Saber "como eu mudo X?", ver os parâmetros e as perguntas frequentes | [12 — Receitas e perguntas](12-receitas-e-perguntas.md) |
+| Gravar suas partidas e treinar uma rede que imita você (TensorFlow.js) | [13 — Imitação com TensorFlow](13-imitacao-tensorflow.md) |
 | Relembrar um termo | [Glossário](glossario.md) |
 
 ## Resumo em uma página
@@ -68,12 +70,13 @@ flowchart LR
 
 | Arquivo | Papel |
 |---|---|
-| `game.js` | O jogo original (não modificado) |
+| `game.js` | O jogo original (só 2 variáveis a mais, para a gravação) |
 | `brain-rules.js` | Cérebro de regras escritas à mão — a "régua" para comparar com a rede |
 | `brain-nn.js` | Entradas normalizadas e a rede neural |
+| `brain-tf.js` | Rede TensorFlow.js que imita partidas gravadas ([13](13-imitacao-tensorflow.md)) |
 | `evolution.js` | Algoritmo genético: genoma, seleção, cruzamento, mutação, limite e conserto de pesos |
 | `training.js` | Ciclo do treino, nota, turbo, reinício do jogo, salvar/carregar |
-| `ai.js` | Sensores (`getState`), atuadores (`act`) e o loop da IA |
+| `ai.js` | Sensores (`getState`), atuadores (`act`), o loop da IA e a gravação de partidas |
 | `ai-panel.js` / `ai-panel.css` | Painel de controle à direita e todo o layout da página |
 | `ai-telemetry.js` | Telemetria: progresso da geração, rede ao vivo e gráficos |
 | `server.py` | Servidor local que serve o jogo e grava o treino em `training-data/` (com proteções contra outros sites) |

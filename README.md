@@ -5,8 +5,9 @@ Uma inteligência artificial que **aprende sozinha a jogar Space Impact**, o jog
 regra de jogo programada.
 
 Projeto de estudo de IA construído sobre a versão web do jogo feita por
-[sidsinr/Space-Impact-Web](https://github.com/sidsinr/Space-Impact-Web). O jogo original (`game.js`) não foi
-modificado: a IA o controla "por fora", como um jogador.
+[sidsinr/Space-Impact-Web](https://github.com/sidsinr/Space-Impact-Web). O jogo original (`game.js`) quase não foi
+modificado (só duas variáveis que marcam o momento do tiro e do especial, usadas na gravação de partidas): a IA o
+controla "por fora", como um jogador.
 
 ## O que tem aqui
 
@@ -21,10 +22,14 @@ modificado: a IA o controla "por fora", como um jogador.
   de cada geração.
 - **Persistência:** o treino é salvo em `training-data/training.json` por um pequeno servidor Python.
 - **Cérebro de regras:** um jogador escrito à mão com `if`s, para comparar com o que a evolução descobre.
+- **Imitação com TensorFlow.js:** você joga com **Gravar partidas** ligado, baixa o `.json` e treina uma rede
+  (19 → 32 → 16 → 6) que imita as suas jogadas, com gráfico de loss ao vivo. Precisa de internet (a biblioteca vem
+  de um CDN). Ver [`docs/13`](docs/13-imitacao-tensorflow.md).
 
 ## Como rodar
 
-Precisa de **Python 3** (só a biblioteca padrão) e de um navegador moderno.
+Precisa de **Python 3** (só a biblioteca padrão) e de um navegador moderno. O TensorFlow.js do modo de imitação é
+carregado de um CDN, então esse modo precisa de internet; o resto funciona offline.
 
 ```bash
 python server.py
@@ -32,10 +37,20 @@ python server.py
 
 Abra **http://localhost:8000**. No VS Code, aperte **F5** e escolha "Jogar (Edge)" ou "Jogar (Chrome)".
 
-Para treinar: no **Painel da IA**, clique em **Iniciar treino** e ligue o **Turbo**. Mantenha a aba visível — o
+O **Painel da IA** tem quatro modos em **Quem controla**: **Você** (teclado), **Regras**, **Rede** (evolução) e
+**Rede TensorFlow (imitação)**. Cada modo mostra só os controles que usa.
+
+Para treinar por evolução: no modo **Rede**, clique em **Iniciar treino** e ligue o **Turbo**. Mantenha a aba visível — o
 navegador desacelera abas escondidas. Depois de algumas gerações, **Pausar treino** e **Assistir a melhor**.
 
-O servidor é necessário porque é ele que grava o treino em arquivo; sem ele, o treino fica só no `localStorage`
+Para treinar por imitação (precisa de internet):
+
+1. No modo **Você**, marque **Gravar partidas**, jogue e clique em **Baixar gravação** (um `.json` por partida).
+2. Mude para **Rede TensorFlow (imitação)**, escolha os arquivos em **Gravações (.json)** e clique em **Treinar**.
+3. Acompanhe o gráfico de loss; ao terminar, a nave joga sozinha. O modelo não é salvo: recarregar a página exige
+   treinar de novo.
+
+O servidor é necessário para o treino por evolução, porque é ele que o grava em arquivo; sem ele, o treino fica só no `localStorage`
 do navegador.
 
 ## Controles
@@ -84,8 +99,8 @@ nem `mcp-server/`. Detalhes em [`docs/07-persistencia.md`](docs/07-persistencia.
 ## Documentação
 
 Tudo está explicado em português em [`docs/`](docs/README.md): que tipo de IA é esta, arquitetura, sensores, rede
-neural, neuroevolução, treino, persistência, telemetria, o diário de decisões (com os erros encontrados e como foram
-resolvidos), a referência de todas as funções e um glossário.
+neural, neuroevolução, treino, persistência, telemetria, imitação com TensorFlow, o diário de decisões (com os erros
+encontrados e como foram resolvidos), a referência de todas as funções e um glossário.
 
 A mesma documentação em uma página só, com sumário e diagramas: [`docs/documentacao.html`](docs/documentacao.html).
 Ela é gerada a partir dos `.md` com:
@@ -98,10 +113,11 @@ python tools/build_docs.py
 
 | Caminho | Papel |
 |---|---|
-| `game.js`, `style.css`, `img/` | o jogo original |
-| `ai.js` | sensores, atuadores e o loop da IA |
+| `game.js`, `style.css`, `img/` | o jogo original (com 2 variáveis a mais para a gravação) |
+| `ai.js` | sensores, atuadores, o loop da IA e a gravação de partidas |
 | `brain-rules.js` | cérebro de regras |
 | `brain-nn.js` | entradas normalizadas e a rede neural |
+| `brain-tf.js` | rede TensorFlow.js que imita partidas gravadas |
 | `evolution.js` | algoritmo genético |
 | `training.js` | treino, nota, turbo, salvar e carregar |
 | `ai-panel.js`, `ai-panel.css` | painel de controle e layout da página |

@@ -226,8 +226,9 @@ Esta pasta explica **tudo** o que foi construído em cima do jogo original para 
 para jogar Space Impact: dos sensores até a evolução das redes neurais, o treino, a telemetria e as decisões tomadas
 pelo caminho (inclusive os erros e como foram descobertos).
 
-O jogo em si (`game.js`, `style.css`, imagens) é o projeto original e **não foi modificado**. Toda a IA vive em
-arquivos próprios que leem e controlam o jogo "por fora".
+O jogo em si (`game.js`, `style.css`, imagens) é o projeto original. A única mudança no `game.js` são duas variáveis
+(`shotFiredThisFrame`, `specialFiredThisFrame`) que a gravação de partidas usa; o resto da IA vive em arquivos próprios
+que leem e controlam o jogo "por fora".
 
 ## Versão em HTML
 
@@ -259,6 +260,7 @@ python tools/build_docs.py
 | Consultar uma função específica | [10 — Referência do código](10-referencia-do-codigo.md) |
 | Ver o Claude jogando pelo servidor MCP e o que se aprendeu com isso | [11 — Claude jogando (MCP)](11-claude-jogando-mcp.md) |
 | Saber "como eu mudo X?", ver os parâmetros e as perguntas frequentes | [12 — Receitas e perguntas](12-receitas-e-perguntas.md) |
+| Gravar suas partidas e treinar uma rede que imita você (TensorFlow.js) | [13 — Imitação com TensorFlow](13-imitacao-tensorflow.md) |
 | Relembrar um termo | [Glossário](glossario.md) |
 
 ## Resumo em uma página
@@ -290,12 +292,13 @@ flowchart LR
 
 | Arquivo | Papel |
 |---|---|
-| `game.js` | O jogo original (não modificado) |
+| `game.js` | O jogo original (só 2 variáveis a mais, para a gravação) |
 | `brain-rules.js` | Cérebro de regras escritas à mão — a "régua" para comparar com a rede |
 | `brain-nn.js` | Entradas normalizadas e a rede neural |
+| `brain-tf.js` | Rede TensorFlow.js que imita partidas gravadas ([13](13-imitacao-tensorflow.md)) |
 | `evolution.js` | Algoritmo genético: genoma, seleção, cruzamento, mutação, limite e conserto de pesos |
 | `training.js` | Ciclo do treino, nota, turbo, reinício do jogo, salvar/carregar |
-| `ai.js` | Sensores (`getState`), atuadores (`act`) e o loop da IA |
+| `ai.js` | Sensores (`getState`), atuadores (`act`), o loop da IA e a gravação de partidas |
 | `ai-panel.js` / `ai-panel.css` | Painel de controle à direita e todo o layout da página |
 | `ai-telemetry.js` | Telemetria: progresso da geração, rede ao vivo e gráficos |
 | `server.py` | Servidor local que serve o jogo e grava o treino em `training-data/` (com proteções contra outros sites) |
@@ -373,9 +376,10 @@ O que ela **não** é:
 | Supervisionado | sim | sim | milhares a milhões | reconhecer dígitos escritos à mão |
 | IA generativa (LLM) | sim | sim, prever a próxima palavra | bilhões | ChatGPT, Claude |
 
-## Princípio: o jogo não é modificado
+## Princípio: o jogo quase não é modificado
 
-`game.js` é o jogo original e permanece intacto. A IA o controla **por fora**, do mesmo jeito que um humano:
+`game.js` é o jogo original. A única edição são duas variáveis, `shotFiredThisFrame` e `specialFiredThisFrame`, que o
+`keydown` marca ao criar um tiro/especial para a gravação de partidas ([13](13-imitacao-tensorflow.md#gravação-aijs)). Fora isso, a IA o controla **por fora**, do mesmo jeito que um humano:
 
 - **lê** variáveis globais que o jogo já expõe (`currentLevel`, `lives`, `playerScore`, `specialCount`…);
 - **escreve** no mesmo objeto `keys` que o teclado escreve (`keys.ArrowUp.pressed = true`);
@@ -408,13 +412,14 @@ sequenceDiagram
 
 ## Quem controla a nave
 
-O painel tem três modos (`brainMode` em `ai.js`):
+O painel tem quatro modos (`brainMode` em `ai.js`):
 
 | Modo | Valor | O que acontece |
 |---|---|---|
 | Você | `"human"` | A IA não mexe em nada; o teclado controla |
 | Regras | `"rules"` | `decide(state)` de `brain-rules.js` escolhe as teclas |
-| Rede | `"nn"` | `nnDecide(state, network)` de `brain-nn.js` escolhe as teclas (é o único modo que treina) |
+| Rede | `"nn"` | `nnDecide(state, network)` de `brain-nn.js` escolhe as teclas (é o único modo que treina por evolução) |
+| Rede TensorFlow | `"tf"` | `tfDecide(state)` de `brain-tf.js`: rede treinada para imitar as suas partidas gravadas ([13](13-imitacao-tensorflow.md)) |
 
 ## Ordem de carregamento dos scripts
 
@@ -426,11 +431,13 @@ chamadas depois).
 <script src="game.js"><\/script>          <!-- o jogo: Level, Player, keys, currentLevel, enemiesLvl1..8 -->
 <script src="brain-rules.js"><\/script>   <!-- decide(), isThreat() -->
 <script src="brain-nn.js"><\/script>      <!-- getInputs(), createNetwork(), predict(), nnDecide(), actionWeights -->
+<script src="brain-tf.js"><\/script>      <!-- tfDecide(), loadRecordings(), trainModel() — imitação -->
 <script src="evolution.js"><\/script>     <!-- genomas, seleção, cruzamento, mutação, WEIGHT_LIMIT, conserto -->
 <script src="training.js"><\/script>      <!-- training, resetGame(), nota, turbo, salvar/carregar -->
 <script src="ai.js"><\/script>            <!-- getState(), act(), aiStep(), aiLoop() — começa o loop -->
 <script src="ai-panel.js"><\/script>      <!-- painel de controle -->
 <script src="ai-telemetry.js"><\/script>  <!-- telemetria -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"><\/script>  <!-- tf, só usado pelo brain-tf.js -->
 ```
 
 Detalhes que dependem dessa ordem:
@@ -451,6 +458,7 @@ flowchart TB
     subgraph Cérebros
         rules[brain-rules.js]
         nn[brain-nn.js]
+        tf[brain-tf.js]
     end
     subgraph Aprendizado
         evo[evolution.js]
@@ -470,6 +478,7 @@ flowchart TB
     ai -->|lê estado, escreve keys| game
     ai --> rules
     ai --> nn
+    ai --> tf
     train -->|resetGame, update| game
     train --> evo
     evo --> nn
@@ -486,7 +495,7 @@ Em telas largas (a partir de 1200 px) a página ocupa exatamente a altura da jan
 
 ```
 ┌──────────────────────────── barra do topo ─────────────────────────────┐
-│ jogo (680 px)            │ rede neural ao vivo             │ Painel da │
+│ jogo (560 px)            │ rede neural ao vivo             │ Painel da │
 │                          │─────────────────┬───────────────│ IA        │
 │ treino · geração em      │ evolução da nota│ pontuação/fase│ (rola por │
 │ andamento                │─────────────────┼───────────────│ dentro)   │
@@ -565,6 +574,12 @@ O servidor **continua rodando** depois de fechar o navegador. Para parar: `Ctrl+
 
 Mantenha a aba **visível** enquanto treina: navegadores quase congelam abas escondidas (`requestAnimationFrame`
 desacelera para ~1 quadro por segundo), e o treino cai junto.
+
+## Opcional: imitação com TensorFlow.js
+
+O modo **Rede TensorFlow (imitação)** usa a biblioteca `tf.min.js`, carregada de um CDN (`cdn.jsdelivr.net`) no fim do
+`index.html`: precisa de **internet**. Os outros modos não dependem dela. Como gravar e treinar:
+[13 — Imitação com TensorFlow](13-imitacao-tensorflow.md).
 
 ## Opcional: deixar o Claude jogar (MCP)
 
@@ -1473,8 +1488,33 @@ Ambos se atualizam a cada 100 ms (`PANEL_REFRESH_MS`).
 
 ### Quem controla
 
-`Você` / `Regras` / `Rede` — troca o cérebro (`setBrainMode`). Sair de `Rede` pausa o treino; ir para `Você` solta
-as teclas que a IA estava segurando.
+`Você` / `Regras` / `Rede` / `Rede TensorFlow (imitação)` — troca o cérebro (`setBrainMode`). Sair de `Rede` pausa o
+treino; ir para `Você` solta as teclas que a IA estava segurando.
+
+As seções abaixo têm o atributo `data-modes` e **só aparecem nos modos listados** (`refreshPanel` esconde as outras):
+
+| Seção | Aparece em |
+|---|---|
+| Gravação (você jogando) | Você |
+| Treino (imitação) | Rede TensorFlow |
+| Treino (neuroevolução) | Rede |
+| Nave da IA | Regras, Rede, Rede TensorFlow |
+| Rede e parâmetros | Rede |
+| Quem controla, Jogo | sempre |
+
+### Gravação (você jogando)
+
+| Controle | O que faz |
+|---|---|
+| Gravar partidas | liga a gravação de frames (`recordingEnabled`) |
+| Baixar gravação | baixa um `recording-….json` com os frames |
+| Limpar gravação | esvazia `recordedFrames` |
+| Frames gravados | quantos frames já estão na memória |
+
+### Treino (imitação)
+
+**Gravações (.json)** escolhe os arquivos, **Treinar** ajusta a rede e a linha de status mostra o progresso, com o
+gráfico de loss logo abaixo. Detalhes em [13](13-imitacao-tensorflow.md).
 
 ### Treino (neuroevolução)
 
@@ -1494,6 +1534,12 @@ as teclas que a IA estava segurando.
 Fase, vidas e pontos atuais; arma especial equipada e munição; e os botões **1–8** da **fase inicial** — para jogar
 e para "Assistir a melhor". O treino ignora essa escolha e sempre passa pelas 8 fases.
 
+### Nave da IA
+
+| Controle | Variável | Faixa | Efeito |
+|---|---|---|---|
+| Intervalo entre tiros | `fireCooldown` | 50 – 1000 ms | ritmo máximo de tiro (vale para Regras, Rede e Rede TensorFlow) |
+
 ### Rede e parâmetros
 
 | Controle | Variável | Faixa | Efeito |
@@ -1502,7 +1548,6 @@ e para "Assistir a melhor". O treino ignora essa escolha e sempre passa pelas 8 
 | Neurônios escondidos | `HIDDEN_COUNT` | 2 – 32 | tamanho da camada escondida; vale ao soltar o slider e converte todas as redes do treino ([04](04-rede-neural.md#número-de-neurônios-escondidos-configurável)) |
 | Limite para apertar | `pressThreshold` | 0,1 – 0,9 | saída acima disso = tecla apertada |
 | Peso de cada tecla | `actionWeights` | −10 – +10 | empurrão fixo em cada saída ([04](04-rede-neural.md#peso-de-cada-tecla-actionweights)) |
-| Intervalo entre tiros | `fireCooldown` | 50 – 1000 ms | ritmo máximo de tiro |
 | Taxa de mutação | `mutationRate` | 1% – 50% | chance de cada peso mudar |
 | Força da mutação | `mutationStrength` | 0,05 – 2 | tamanho da mudança |
 
@@ -1574,6 +1619,12 @@ informação ou controle sobre o terreno; muita morte por tiro = falta desviar/d
 As 30 notas da última geração, da maior para a menor. As 2 primeiras (verde claro) são a **elite**, que passa intacta.
 Uma "escada" suave = população diversa; um bloco todo igual = população convergiu (todas parecidas).
 
+### Erro por epoch (loss) — só no modo TensorFlow
+
+Fica no painel, dentro da seção de treino por imitação (`ai-telemetry.js`). Mostra `epoch`, `loss` e `val_loss` e, abaixo, as
+duas curvas por epoch (verde = treino, vermelho = validação), com o eixo x indo até o total de epochs. Recomeça a cada
+clique em **Treinar**. O significado de cada curva está em [13](13-imitacao-tensorflow.md#treinar).
+
 ## Layout
 
 A página é montada em três faixas: barra do topo, conteúdo (`#app-body`) e rodapé.
@@ -1592,7 +1643,7 @@ A página é montada em três faixas: barra do topo, conteúdo (`#app-body`) e r
 
 | Largura da janela | Comportamento |
 |---|---|
-| ≥ 1500 px (painel aberto) ou ≥ 1200 px (painel recolhido) | duas colunas de conteúdo: jogo com **680 px** e gráficos com o resto; os gráficos **esticam** para preencher a altura |
+| ≥ 1500 px (painel aberto) ou ≥ 1200 px (painel recolhido) | duas colunas de conteúdo: jogo com **560 px** e gráficos com o resto; os gráficos **esticam** para preencher a altura |
 | ≥ 1200 px | a página tem a altura exata da janela; o painel é uma coluna de 300 px; conteúdo e painel **rolam cada um por dentro** |
 | < 1200 px | uma coluna (jogo com até 840 px, gráficos embaixo); o painel volta a **flutuar** à direita e pode ser recolhido |
 | < 760 px | os gráficos ficam um embaixo do outro, e os números do progresso passam de 7 para 4 colunas |
@@ -1871,9 +1922,28 @@ Várias rodadas a partir de prints do usuário:
 2. duas colunas (jogo + gráficos) e painel enxuto (as barras de entradas/saídas saíram porque o diagrama da rede já
    mostra os mesmos valores);
 3. controles, descrição e "botões na tela" no **rodapé**;
-4. jogo em **680 px** e gráficos esticando para preencher a altura;
+4. jogo em **680 px** (depois reduzido para **560 px**, para dar mais largura aos gráficos) e gráficos esticando para preencher a altura;
 5. o painel flutuante (`position: fixed`) cortava a barra do topo e cobria o rodapé → virou uma **coluna de verdade**
    entre topo e rodapé.
+
+---
+
+## Imitar o jogador com TensorFlow.js
+
+Depois da neuroevolução e da clonagem das jogadas do Claude, entrou um terceiro caminho: **você** joga, o jogo grava, e uma
+rede de TensorFlow.js aprende a imitar. Decisões e motivos:
+
+| Decisão | Motivo |
+|---|---|
+| Gravar **as mesmas 19 entradas** da rede da evolução | a mesma interface de sensores vale para todos os cérebros |
+| Ligar o frame `i` à ação do frame `i + 12` (`REACTION_DELAY`) | uma pessoa reage depois de ver; sem o atraso, a rede aprenderia o que o jogador *já estava fazendo* |
+| `shotFiredThisFrame` / `specialFiredThisFrame` no `game.js` | tiro e especial são eventos (segurar a barra não atira de novo), e `keys.*.pressed` não mostra o disparo; é a única edição no jogo |
+| 20% de validação e gráfico de `loss`/`val_loss` | ver se a rede generaliza ou só decora |
+| Um limite calibrado por tecla | teclas raras (especial) nunca passariam de um limite fixo; o limite é escolhido para a rede apertar na mesma proporção que o jogador |
+| Modelo guardado só na memória | por enquanto não há salvar/carregar o modelo: ele não entra no `training.json` da evolução, e recarregar a página exige treinar de novo |
+| Painel por modo (`data-modes`) | com 4 cérebros e muitos controles, cada modo mostra só o que usa |
+
+Detalhes em [13](13-imitacao-tensorflow.md).
 
 ---
 
@@ -1904,7 +1974,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 ---
 
-## Do `game.js` (usado pela IA, não modificado)
+## Do `game.js` (usado pela IA)
 
 | Nome | Tipo | Usado para |
 |---|---|---|
@@ -1917,6 +1987,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `enemiesLvl1` … `enemiesLvl8` | arrays de ondas `{ time, object: [...] }` | inimigos de cada fase |
 | `checkCollision(a, b)` | função | colisão de retângulos |
 | `gameStart()` | função | sai da tela inicial |
+| `shotFiredThisFrame`, `specialFiredThisFrame` | globais (0/1) | **acrescentadas para a IA**: o `keydown` põe 1 ao criar um tiro/especial; `recordStep()` lê e zera |
 
 ---
 
@@ -1932,12 +2003,34 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `lastFireFrame`, `lastSpecialFrame` | frame do último tiro / especial |
 | `act(action)` | aplica `{ up, down, left, right, fire, special }`: escreve em `keys`, cria tiros e especiais respeitando intervalos e munição |
 | `createSpecial(level)` | cria `Missile`, `Laser` ou `Wall` conforme `specialAtttack` |
-| `brainMode` | `"human"`, `"rules"` ou `"nn"` |
+| `brainMode` | `"human"`, `"rules"`, `"nn"` ou `"tf"` |
+| `recordingEnabled` | caixa **Gravar partidas** marcada |
+| `recordedFrames` | lista de `{ level, inputs, actions }` gravada no modo `"human"` |
+| `recordStep()` | grava o frame atual (não grava com a fase vencida) e zera `shotFiredThisFrame`/`specialFiredThisFrame` |
+| `downloadRecording()`, `clearRecording()` | baixa `recording-….json` / esvazia a lista |
 | `network` | a rede que joga no modo `"nn"` |
 | `RELEASE_ALL` | ação com todas as teclas soltas |
 | `setBrainMode(mode)` | troca o cérebro; sair de `"nn"` pausa o treino; `"human"` solta as teclas |
-| `aiStep()` | um passo: sensores → cérebro → `act()`; com fase vencida, solta tudo. Devolve a ação (o treino conta as teclas) |
-| `aiLoop()` | roda a cada quadro da tela: `runTrainingFrame()` se treinando, senão `aiStep()` |
+| `aiStep()` | um passo: sensores → cérebro (`nnDecide`, `tfDecide` ou `decide`) → `act()`; com fase vencida, solta tudo. Devolve a ação (o treino conta as teclas) |
+| `aiLoop()` | roda a cada quadro da tela: `runTrainingFrame()` se treinando, senão `aiStep()`; no modo `"human"` com gravação ligada, `recordStep()` |
+
+## `brain-tf.js` — imitação com TensorFlow.js
+
+Detalhes em [13](13-imitacao-tensorflow.md).
+
+| Nome | Descrição |
+|---|---|
+| `tfModel` | o modelo treinado (`null` = ainda não treinou) |
+| `tfThresholds` | limite de cada tecla, na ordem de `ACTION_KEYS` |
+| `REACTION_DELAY` (12) | frames entre ver a situação e apertar a tecla |
+| `setTfStatus(text)` | escreve na linha de status do painel |
+| `tfDecide(state)` | 6 notas do modelo → teclas acima do limite; sem modelo, solta tudo |
+| `loadRecordings(files)` | lê os `.json` e devolve `{ level, inputs, actions }` com o atraso de reação aplicado |
+| `buildDataset(frames)` | frames → tensores `xs` (N×19) e `ys` (N×6) |
+| `createModel()` | `tf.sequential` 19 → 32 (relu) → 16 (relu) → 6 (sigmoid); `adam` + `binaryCrossentropy` |
+| `trainModel()` | carrega, embaralha, treina 20 epochs (lote 64, 20% de validação) e calibra os limites |
+| `calibrateThresholds(frames)` | um limite por tecla para apertar na mesma proporção que o jogador (`pressThreshold` se houver < 50 exemplos) |
+| `shuffleFrames(frames)` | embaralha no lugar (Fisher-Yates) |
 
 ## `brain-rules.js` — cérebro de regras
 
@@ -2087,10 +2180,10 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `INPUT_LABELS` | nomes das 19 entradas (usados na telemetria) |
 | `SPECIAL_NAMES`, `KEY_NAMES` | nomes em português |
 | `PANEL_REFRESH_MS` (100) | intervalo de atualização |
-| `createPanel()` | monta o painel dentro de `#app-body` e liga os controles |
+| `createPanel()` | monta o painel dentro de `#app-body` e liga os controles (inclusive gravação e treino TF; seções com `data-modes`) |
 | `bindSlider(id, getValue, setValue, format)` | liga um slider a uma variável |
 | `countWeights(net)` | número de pesos da rede (162) |
-| `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões |
+| `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões; `refreshPanel` também mostra/esconde as seções conforme `data-modes` e atualiza "Frames gravados" |
 
 ## `ai-telemetry.js` — telemetria
 
@@ -2106,6 +2199,9 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 | `setText(id, text)`, `formatDuration(seconds)` | utilitários |
 | `prepareCanvas(id)` | ajusta resolução (inclusive densidade de pixels) e limpa |
 | `emptyMessage(chart, text)` | mensagem quando ainda não há dados |
+| `tfLoss`, `tfLossKey` | loss por epoch do treino por imitação e a chave que decide quando redesenhar |
+| `resetTfLossChart()`, `addTfLossEpoch(epoch, logs, total)`, `refreshTfLoss()` | recomeça o gráfico / registra uma epoch (chamada pelo `trainModel`) / atualiza números e desenho |
+| `drawTfLoss()` | curvas de `loss` e `val_loss` por epoch |
 | `drawEvolution()` | linhas de melhor e média |
 | `mixColor(a, b, t)` | mistura duas cores hex |
 | `drawHeatmap()` | mapa de calor fase × geração |
@@ -2119,7 +2215,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 |---|---|
 | Variáveis em `#ai-panel, #ai-layout` | cores: `--panel-*`, `--chart-bg`, `--lcd`, `--hot`, `--bad`, `--end-*` (uma por motivo de fim) |
 | `#ai-panel` | painel flutuante (< 1200 px) ou coluna (≥ 1200 px) |
-| `#app-body`, `#ai-layout`, colunas | layout de altura total, jogo em 680 px nas telas largas, gráficos que esticam |
+| `#app-body`, `#ai-layout`, colunas | layout de altura total, jogo em 560 px nas telas largas, gráficos que esticam |
 | `#game-footer` | rodapé |
 | `.tl-*` | cards e gráficos da telemetria |
 
@@ -2158,7 +2254,7 @@ scripts clássicos compartilhando variáveis globais (a ordem de carregamento es
 
 | Arquivo | Conteúdo |
 |---|---|
-| `build_docs.py` | junta `docs/README.md`, `docs/01…12-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `<\/script` escapado) |
+| `build_docs.py` | junta `docs/README.md`, `docs/01…13-*.md` e `docs/glossario.md` em `docs/documentacao.html`; cada `.md` vira um `<script type="text/markdown">` (com `<\/script` escapado) |
 | `docs-template.html` | o modelo da página: estilos, sumário lateral e o script que, no navegador, converte o Markdown com o marked.js, cria os ids dos títulos no estilo do GitHub (prefixados pelo nome do documento), troca links `06-treino.md#…` por âncoras da própria página e desenha os diagramas Mermaid |
 
 ## `.vscode/`
@@ -2340,10 +2436,10 @@ resposta aponta para o documento que explica o assunto por inteiro.
 
 ## Receitas
 
-### Comparar os três jeitos de jogar
+### Comparar os jeitos de jogar
 
-No painel, em **Quem controla**: **Você** (teclado), **Regras** (`brain-rules.js`, `if`s escritos à mão) e **Rede**
-(`brain-nn.js`). Use as **Regras** como régua: se a rede treinada não ganha delas, o treino ainda não achou nada de
+No painel, em **Quem controla**: **Você** (teclado), **Regras** (`brain-rules.js`, `if`s escritos à mão), **Rede**
+(`brain-nn.js`, treinada por evolução) e **Rede TensorFlow** (`brain-tf.js`, treinada para imitar as suas partidas). Use as **Regras** como régua: se a rede treinada não ganha delas, o treino ainda não achou nada de
 útil. Ver [01](01-visao-geral.md#quem-controla-a-nave).
 
 ### Treinar e acompanhar
@@ -2412,6 +2508,12 @@ Aprovar o servidor `space-impact` no Claude Code e pedir para ele jogar ([11](11
 ### Atualizar esta documentação
 
 Edite os `.md` de `docs/` e rode `python tools/build_docs.py`. Nunca edite `docs/documentacao.html` à mão.
+
+### Ensinar a nave imitando você
+
+**Você** → marque **Gravar partidas** e jogue → **Baixar gravação**. Depois **Rede TensorFlow (imitação)** → escolha os
+arquivos → **Treinar**. Passo a passo, limites e o que significam `loss` e `val_loss` em
+[13](13-imitacao-tensorflow.md).
 
 ## Parâmetros: o que cada número controla
 
@@ -2504,6 +2606,125 @@ exemplo para a rede não funcionou com as 11 entradas antigas.
 | um termo | — | [Glossário](glossario.md) |
 
 </script>
+<script type="text/markdown" data-key="13-imitacao-tensorflow" data-file="13-imitacao-tensorflow.md">
+# 13 — Imitação com TensorFlow.js
+
+Além da neuroevolução, o projeto tem um segundo jeito de ensinar a nave: **aprendizado por imitação** (*behavior
+cloning*). Você joga, o jogo grava o que você fez, e uma rede neural aprende a **repetir** as suas jogadas. Aqui o
+aprendizado é **supervisionado**: cada frame gravado é um exemplo "nesta situação, o jogador apertou estas teclas".
+
+É o mesmo princípio da clonagem do Claude ([11](11-claude-jogando-mcp.md#aproveitar-a-partida-clonagem-de-comportamento)),
+mas feito inteiro dentro da página, com a biblioteca [TensorFlow.js](https://www.tensorflow.org/js) (`tf`) em vez de
+contas escritas à mão. O código está em `brain-tf.js`; a gravação está em `ai.js`.
+
+```mermaid
+flowchart LR
+    H["Você joga<br/>(modo Você + Gravar partidas)"] -->|"recordStep(): 19 entradas + 6 teclas por frame"| R["recordedFrames"]
+    R -->|Baixar gravação| F["recording-AAAA-MM-DDTHH-MM-SS.json"]
+    F -->|"Gravações (.json) → Treinar"| T["trainModel()<br/>tf.sequential 19→32→16→6"]
+    T --> M["tfModel + tfThresholds"]
+    M -->|"tfDecide(state)"| A["act()"]
+```
+
+## Passo a passo no painel
+
+1. **Quem controla → Você**. Aparece a seção **GRAVAÇÃO (VOCÊ JOGANDO)**.
+2. Marque **Gravar partidas** e jogue. O contador mostra **Frames gravados: N**.
+3. **Baixar gravação** salva um `recording-….json` (e **Limpar gravação** esvazia a lista). Dá para juntar várias
+   partidas: cada download é um arquivo.
+4. **Quem controla → Rede TensorFlow (imitação)**. Aparece a seção **TREINO (IMITAÇÃO)**.
+5. Em **Gravações (.json)** escolha um ou mais arquivos e clique em **Treinar**. O status mostra `Epoch n/20`, a
+   `loss` e a `val_loss`, e o gráfico **ERRO POR EPOCH (LOSS)** cresce junto.
+6. Ao terminar (`Treino concluído com N frames`) a nave já joga sozinha com o modelo treinado.
+
+Sem treinar, o modo TF não aperta nenhuma tecla (`tfDecide` devolve `RELEASE_ALL` quando `tfModel` é `null`).
+
+## Gravação (`ai.js`)
+
+Só grava com `brainMode === "human"`, **Gravar partidas** marcado e a fase em andamento (`aiLoop`). A cada frame,
+`recordStep()` guarda `{ level, inputs, actions }`:
+
+| Campo | Conteúdo |
+|---|---|
+| `level` | número da fase |
+| `inputs` | as **19 entradas** de `getInputs(getState())`, as mesmas que a rede da evolução vê ([03](03-sensores-e-acoes.md)) |
+| `actions` | 6 valores 0/1, na ordem de `ACTION_KEYS`: cima, baixo, esquerda, direita, tiro, especial |
+
+Detalhes:
+
+- **Fase vencida não grava.** Com `currentLevel.levelComplete` o jogo assume a nave; esses frames não são decisão sua.
+- **Tiro e especial são eventos, não estado.** Segurar a barra de espaço não atira de novo (`keys.space.pressed`), então
+  o que importa é o *momento* do disparo. Por isso o `game.js` ganhou duas variáveis, `shotFiredThisFrame` e
+  `specialFiredThisFrame`: o `keydown` as põe em 1 quando de fato cria o tiro/especial e o `recordStep()` as zera
+  depois de ler. Setas usam `keys.*.pressed`, que é estado.
+- **A gravação mora na memória da página.** Recarregar a aba perde o que não foi baixado.
+
+> Esta é a **única mudança no `game.js`** feita para a IA (as duas variáveis e as linhas que as acionam). O resto
+> continua de fora.
+
+## Treino (`brain-tf.js`)
+
+### Atraso de reação
+
+`loadRecordings()` junta todos os arquivos e liga o que você **viu** no frame `i` ao que você **fez** no frame
+`i + REACTION_DELAY`, com `REACTION_DELAY = 12` frames (0,2 s). Uma pessoa reage depois de ver; sem esse deslocamento a
+rede aprenderia "o que eu estava fazendo" em vez de "o que eu faço quando vejo isto". Os últimos 12 frames de cada
+arquivo ficam de fora.
+
+### Dados
+
+`shuffleFrames()` embaralha os frames (Fisher-Yates) e `buildDataset()` os transforma em dois tensores: `xs` (N × 19) e
+`ys` (N × 6).
+
+### O modelo
+
+`createModel()` — uma rede **maior** que a da neuroevolução (que tem 6 neurônios escondidos e ~162 pesos), porque aqui
+os pesos são achados por gradiente, não por sorteio:
+
+| Camada | Tamanho | Ativação |
+|---|---|---|
+| entrada | 19 | — |
+| densa 1 | 32 | `relu` |
+| densa 2 | 16 | `relu` |
+| saída | 6 | `sigmoid` (uma nota de 0 a 1 por tecla) |
+
+Compilada com `optimizer: "adam"` e `loss: "binaryCrossentropy"` (cada tecla é um "sim/não" independente).
+
+### Treinar
+
+`trainModel()` roda `fit` com **20 epochs**, `batchSize` 64, `shuffle` e `validationSplit: 0.2`: 20% dos frames ficam de
+fora e só medem se a rede generaliza.
+
+- **`loss`** — erro nos frames de treino. Cai conforme a rede decora o que viu.
+- **`val_loss`** — erro nos 20% reservados. Se a `loss` cai e a `val_loss` sobe, a rede está **decorando** (*overfitting*).
+
+O gráfico **ERRO POR EPOCH (LOSS)** (`drawTfLoss` em `ai-telemetry.js`) desenha as duas curvas; cada clique em
+**Treinar** o recomeça (`resetTfLossChart`). Ele fica dentro da seção do modo TF, então só aparece nesse modo.
+
+### Limites calibrados
+
+Teclas raras (tiro especial, por exemplo) têm nota baixa quase sempre; com o limite fixo de `pressThreshold` a rede
+nunca as apertaria. `calibrateThresholds()` calcula **um limite por tecla**: ordena as notas do modelo sobre os frames
+gravados e escolhe o limite que faz a rede apertar **na mesma proporção** que você apertou. Com menos de 50 exemplos
+de uma tecla, calibrar seria chute e vale o `pressThreshold` do painel. No console aparece `Limites calibrados: …`.
+
+### Jogando
+
+`tfDecide(state)` calcula as 6 notas com `tfModel.predict` (dentro de `tf.tidy`, que libera os tensores) e aperta as
+teclas cuja nota passa do limite da tecla (`tfThresholds`). Em ~2% dos frames escreve as notas e a ação no console,
+para depuração. O **Intervalo entre tiros** da seção **NAVE DA IA** vale para os modos Regras, Rede e TF.
+
+## Limites desta abordagem
+
+1. **Imitar não é vencer.** A rede copia as jogadas **e os erros** de quem gravou ([11](11-claude-jogando-mcp.md)).
+2. **Só vê o que as 19 entradas mostram** ([09](09-diario-de-decisoes.md#lições)).
+3. **Não fica salva.** `tfModel` e `tfThresholds` vivem na memória da página: recarregar apaga, e é preciso treinar de
+   novo. O treino evolutivo, esse sim, é salvo ([07](07-persistencia.md)).
+4. **Precisa de internet.** O `tf.min.js` (versão 4.22.0) vem do CDN `cdn.jsdelivr.net`, carregado no fim do `index.html`.
+   Sem ele os outros modos funcionam, mas **Treinar** e o modo TF não.
+5. **Pouca gravação, pouco aprendizado.** Gravações curtas ou de uma fase só dão uma rede que só sabe aquilo.
+
+</script>
 <script type="text/markdown" data-key="glossario" data-file="glossario.md">
 # Glossário
 
@@ -2560,6 +2781,12 @@ exemplo para a rede não funcionou com as 11 entradas antigas.
 | **Subagente** | outra instância do Claude, chamada para uma tarefa (aqui, jogar uma partida) |
 | **Clonagem de comportamento** | treinar a rede para repetir as jogadas de um demonstrador, como se fossem as respostas certas |
 | **Demonstração** | um exemplo `(entradas → teclas)` gravado de uma partida do Claude |
+| **Aprendizado por imitação** | treinar a rede para repetir as jogadas de quem jogou (aqui, você); ver [13](13-imitacao-tensorflow.md) |
+| **TensorFlow.js (`tf`)** | biblioteca de redes neurais para o navegador; o `brain-tf.js` a usa, carregada de um CDN |
+| **Epoch** | uma passada completa do treino por todos os exemplos gravados |
+| **Loss / val_loss** | erro da rede nos frames de treino / nos 20% reservados para conferir; `val_loss` subindo com a `loss` caindo = decorando |
+| **Limite calibrado** | limite por tecla, ajustado para a rede apertar na mesma proporção que o jogador (`tfThresholds`) |
+| **Atraso de reação** | os 12 frames (`REACTION_DELAY`) entre ver a situação e apertar a tecla, aplicados nos dados de imitação |
 | **Origin / Host** | cabeçalhos HTTP que dizem de que site veio um pedido e a que endereço ele foi; o `server.py` os confere |
 | **DNS rebinding** | ataque em que um site malicioso faz o nome dele apontar para `localhost`, para falar com servidores locais |
 | **Telemetria** | dados coletados durante o treino e mostrados em gráficos |
