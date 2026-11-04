@@ -134,6 +134,15 @@ async function trainModel() {
     xs.dispose();
     ys.dispose();
 
+    // guarda os dados do treino para salvar junto com o modelo
+    tfTrainingInfo = {
+        trainedAt: new Date().toISOString(),
+        frameCount: frames.length,
+        loss: lastLogs.loss,
+        valLoss: lastLogs.val_loss,
+        reactionDelay: REACTION_DELAY,
+    };
+
     // 5. avisa que terminou
     setTfStatus(`Treino concluído com ${frames.length} frames | loss: ${lastLogs.loss.toFixed(4)} | val_loss: ${lastLogs.val_loss.toFixed(4)}`);
 }
@@ -163,4 +172,97 @@ function shuffleFrames(frames) {
         const j = Math.floor(Math.random() * (i + 1));
         [frames[i], frames[j]] = [frames[j], frames[i]];   // troca os dois de lugar
     }
+}
+
+// ---------- Salvar e carregar o modelo treinado ----------
+
+const TF_BROWSER_PATH = "indexeddb://space-impact-tf";    // guardado no IndexedDB do navegador
+const TF_DOWNLOAD_PATH = "downloads://space-impact-tf";   // baixa space-impact-tf.json + space-impact-tf.weights.bin
+
+let tfTrainingInfo = null;   // dados do último treino (data, frames, loss, val_loss, atraso). null = nada treinado ainda
+
+// Liga ou desliga os botões de salvar (só faz sentido salvar depois de treinar ou carregar)
+function setTfSaveButtonsEnabled(enabled) {
+    document.getElementById("ai-tf-save-browser").disabled = !enabled;
+    document.getElementById("ai-tf-download").disabled = !enabled;
+}
+
+// Monta o texto de status com as informações salvas junto do modelo
+function describeTfTrainingInfo(info) {
+    const date = new Date(info.trainedAt).toLocaleString("pt-BR");
+    return `treinado em ${date} | ${info.frameCount} frames | loss: ${info.loss.toFixed(4)} | val_loss: ${info.valLoss.toFixed(4)}`;
+}
+
+// Salva o modelo com os limites e os dados do treino nos metadados, para nunca se separarem
+async function saveTfModel(path) {
+    if (!tfModel || !tfTrainingInfo) {
+        setTfStatus("Treine ou carregue um modelo antes de salvar.");
+        return;
+    }
+
+    tfModel.setUserDefinedMetadata({ thresholds: tfThresholds, ...tfTrainingInfo });
+
+    try {
+        await tfModel.save(path);
+        const where = path === TF_BROWSER_PATH ? "Salvo no navegador" : "Arquivos baixados (.json e .bin)";
+        setTfStatus(`${where} | ${describeTfTrainingInfo(tfTrainingInfo)}`);
+    } catch (error) {
+        console.error(error);
+        setTfStatus(`Não foi possível salvar o modelo: ${error.message}`);
+    }
+}
+
+// Carrega do navegador (path) ou de arquivos (um IOHandler do tf.io.browserFiles)
+async function loadTfModel(source) {
+    setTfStatus("Carregando modelo...");
+
+    let model;
+    try {
+        model = await tf.loadLayersModel(source);
+    } catch (error) {
+        console.error(error);
+        if (source === TF_BROWSER_PATH && /cannot find model/i.test(error.message)) {
+            setTfStatus("Nada salvo no navegador ainda. Treine um modelo e clique em \"Salvar no navegador\".");
+        } else {
+            setTfStatus(`Não foi possível carregar o modelo: ${error.message}`);
+        }
+        return;
+    }
+
+    // troca o modelo antigo pelo novo e libera a memória do antigo
+    if (tfModel) tfModel.dispose();
+    tfModel = model;
+
+    const metadata = model.getUserDefinedMetadata() || {};
+    const { thresholds, ...info } = metadata;
+
+    // sem os limites a rede não aperta nada: avisa em vez de quebrar
+    if (!Array.isArray(thresholds) || thresholds.length !== ACTION_KEYS.length) {
+        tfThresholds = [];
+        tfTrainingInfo = null;
+        setTfSaveButtonsEnabled(false);
+        setTfStatus("Modelo carregado, mas sem os limites nos metadados: a rede não vai apertar nenhuma tecla. Treine de novo para gerar os limites.");
+        return;
+    }
+
+    tfThresholds = thresholds;
+    tfTrainingInfo = info;
+    setTfSaveButtonsEnabled(true);
+    console.log("Limites carregados:", tfThresholds.map(t => t.toFixed(3)));
+    setTfStatus(`Modelo carregado | ${describeTfTrainingInfo(info)} | atraso: ${info.reactionDelay} frames`);
+}
+
+// Carrega o .json e o .bin escolhidos no <input type="file" multiple>
+function loadTfModelFromFiles(files) {
+    const list = Array.from(files);
+    const jsonFile = list.find(file => file.name.endsWith(".json"));
+    const binFiles = list.filter(file => file.name.endsWith(".bin"));
+
+    if (!jsonFile || binFiles.length === 0) {
+        setTfStatus("Escolha os dois arquivos do modelo juntos: o .json e o .bin.");
+        return;
+    }
+
+    // o tf.io.browserFiles exige o .json em primeiro lugar
+    return loadTfModel(tf.io.browserFiles([jsonFile, ...binFiles]));
 }

@@ -50,6 +50,14 @@ function createPanel() {
                 <input type="file" id="recordingFiles" accept=".json" multiple>
                 <button type="button" id="ai-tf-train">Treinar</button>
                 <p class="ai-note" id="ai-tf-status">Carregue gravações e clique em Treinar.</p>
+                <div class="ai-train-buttons">
+                    <button type="button" id="ai-tf-save-browser" disabled>Salvar no navegador</button>
+                    <button type="button" id="ai-tf-load-browser">Carregar do navegador</button>
+                    <button type="button" id="ai-tf-download" disabled>Baixar modelo</button>
+                    <button type="button" id="ai-tf-load-files">Carregar arquivos do modelo</button>
+                </div>
+                <!-- escondido: o botão acima abre a janela; escolha o .json e o .bin juntos -->
+                <input type="file" id="tfModelFiles" accept=".json,.bin" multiple hidden>
             </section>
 
             <section class="ai-section" data-modes="nn">
@@ -147,9 +155,22 @@ function createPanel() {
 
     // treino por imitação (as funções de ML ficam no brain-tf.js; o gráfico de loss, na telemetria)
     panel.querySelector("#recordingFiles").addEventListener("change", event => loadRecordings(event.target.files));
-    panel.querySelector("#ai-tf-train").addEventListener("click", () => {
+    panel.querySelector("#ai-tf-train").addEventListener("click", async () => {
         resetTfLossChart();   // cada treino começa um gráfico novo
-        trainModel();
+        setTfSaveButtonsEnabled(false);   // durante o treino não dá para salvar um modelo pela metade
+        await trainModel();
+        setTfSaveButtonsEnabled(tfTrainingInfo !== null);
+    });
+
+    // salvar e carregar o modelo treinado (as funções ficam no brain-tf.js)
+    panel.querySelector("#ai-tf-save-browser").addEventListener("click", () => saveTfModel(TF_BROWSER_PATH));
+    panel.querySelector("#ai-tf-download").addEventListener("click", () => saveTfModel(TF_DOWNLOAD_PATH));
+    panel.querySelector("#ai-tf-load-browser").addEventListener("click", () => loadTfModel(TF_BROWSER_PATH));
+    const modelFilesInput = panel.querySelector("#tfModelFiles");
+    panel.querySelector("#ai-tf-load-files").addEventListener("click", () => modelFilesInput.click());
+    modelFilesInput.addEventListener("change", () => {
+        loadTfModelFromFiles(modelFilesInput.files);
+        modelFilesInput.value = "";   // permite escolher os mesmos arquivos de novo
     });
 
     // fase inicial

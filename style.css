@@ -41,11 +41,14 @@ canvas {
     position: relative;
 }
  /* ------------- Game-Buttons-pause and others ---------*/
-#pause-button {
+/* Pause e Reiniciar lado a lado, centralizados embaixo do jogo */
+#game-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+#pause-button, #restart-button {
     display: block;
-    position: relative;
-    left: 50%;
-    transform: translateX(-50%);
     cursor: pointer;
     font-family: 'Silkscreen', monospace;
     font-weight: bold;
@@ -54,7 +57,7 @@ canvas {
     border-radius: 5px;
     visibility: hidden;
 }
-#pause-button:hover{
+#pause-button:hover, #restart-button:hover:enabled{
     background-color: gainsboro;
 }
 

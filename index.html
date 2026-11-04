@@ -25,9 +25,12 @@
     <div id="game">
         <canvas id="canvas-bg">Your browswer doesn't support HTML Canvas</canvas>
         <canvas id="canvas-main"></canvas>
-        <button id="pause-button">Pause</button>
+        <div id="game-controls">
+            <button id="pause-button">Pause</button>
+            <button id="restart-button">Reiniciar</button>
+        </div>
         <button class="ingame-button" id="play">Play</button>
-        <button class="ingame-button" id="exit">Exit</button>
+        <button class="ingame-button" id="exit">Reiniciar</button>
     </div>
     </div>
     <div id="ai-side-column"></div>
@@ -86,6 +89,7 @@
     <script src="brain-tf.js"></script>
     <script src="evolution.js"></script>
     <script src="training.js"></script>
+    <script src="game-restart.js"></script>
     <script src="ai.js"></script>
     <script src="ai-panel.js"></script>
     <script src="ai-telemetry.js"></script>
