@@ -275,6 +275,30 @@ rede de TensorFlow.js aprende a imitar. Decisões e motivos:
 
 Detalhes em [13](13-imitacao-tensorflow.md).
 
+## Teto e chão à frente: o 0 que dizia duas coisas
+
+**Investigação:** nas gerações 146 a 148, as fases com obstáculo no **chão** (3, 4, 7, 8) não tinham **nenhuma** morte
+no terreno; nas fases com **teto** (5 e 6) eram 21 a 28 de 30. Rodando a melhor rede frame a frame na fase 6: a nave
+seguia colada num teto baixo (base em 125) e entrou na faixa de visão um teto mais comprido (base em 215). O sensor 9
+caiu para **0**, o mesmo valor de "só encostada no teto", que é seguro e que a rede vê o tempo todo na fase 5. Ela
+apertou para cima e bateu. O tempo não era o problema (o bloco aparece ~85 frames antes); faltava a informação.
+
+Achado no caminho: o sensor decidia "teto ou chão" pelo centro do bloco. Com a nave no alto, um teto comprido (de 50 a
+215) ficava abaixo do centro dela e virava "chão".
+
+**Decisão:**
+
+- `isCeiling()`: bloco grudado no topo da área de jogo é teto, grudado na borda de baixo é chão; só um bloco solto
+  decide pelo centro. Nas fases de chão o resultado é o mesmo de antes.
+- duas entradas novas no fim da lista, **19 "Teto à frente"** e **20 "Chão à frente"**: só a faixa à frente da ponta
+  da nave, **com sinal** (−150 a +150 px, 0,5 = rente). Abaixo de 0,5 = o terreno invade a altura da nave.
+- os sensores 9 e 10 ficaram como estavam, para não mudar o que as redes já sabem nas fases de chão.
+
+**Treino aproveitado:** as entradas novas entram com peso 0 (`upgradeGenome`, `LEGACY_SHAPES` ganhou o formato de 19
+entradas). Conferido: em 200 entradas sorteadas, a rede convertida dá **exatamente** as mesmas saídas que a antiga.
+Backup em `training-antes-teto.json` (geração 149). O cérebro TensorFlow passou a usar `INPUT_COUNT` e recusa, com
+aviso, gravações e modelos de 19 entradas.
+
 ---
 
 ## Lições

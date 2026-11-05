@@ -159,7 +159,7 @@ function recordStep() {
     if (currentLevel.levelComplete) {
         return;
     }
-    // 2. pega o estado do jogo e transforma nos 19 números
+    // 2. pega o estado do jogo e transforma nos números de entrada (INPUT_COUNT)
     const inputs = getInputs(getState());
     
     // 3. monta a lista das 6 ações, na MESMA ORDEM do ACTION_KEYS:

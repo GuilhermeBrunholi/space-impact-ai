@@ -97,6 +97,7 @@ SENSOR_NAMES = [
     "has_special", "space_above", "space_below",
     "has_item", "item_dist", "item_dy", "item_is_life",
     "shot_danger", "shot_danger_dy", "enemy_danger", "enemy_danger_dy",
+    "ceiling_ahead", "floor_ahead",
 ]
 
 

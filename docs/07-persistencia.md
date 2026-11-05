@@ -122,6 +122,7 @@ Antes de cada mudança que alterava o formato ou a população, foi feita uma c�
 | `training-antes-equilibrio.json` | 115 | nota equilibrada por fase (versão 3) |
 | `training-antes-limite-pesos.json` | 128 | limite de ±4 e conserto das redes saturadas |
 | `training-antes-sensores.json` (e `best-network-antes-sensores.json`) | 260 | 19 entradas (114 → 162 números): item coletável e perigo iminente |
+| `training-antes-teto.json` (e `best-network-antes-teto.json`) | 149 | 21 entradas: teto e chão à frente, com sinal (266 → 286 números com 10 escondidos) |
 
 Para voltar a um backup: pare o treino, renomeie o backup para `training.json` e recarregue a página. A conversão
 automática cuida do formato.

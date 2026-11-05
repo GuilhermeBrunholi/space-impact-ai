@@ -1,18 +1,19 @@
 # 04 — Rede neural
 
-A rede neural é o cérebro da Fase 2. Ela recebe os 19 números do `getInputs()` e devolve 6 números, um para cada
+A rede neural é o cérebro da Fase 2. Ela recebe os 21 números do `getInputs()` e devolve 6 números, um para cada
 tecla. Toda a rede é escrita à mão em `brain-nn.js`, sem bibliotecas, para dar para ver cada conta.
 
 ## Formato: 19 → 6 → 6
 
 ```mermaid
 flowchart LR
-    subgraph Entradas [19 entradas]
+    subgraph Entradas [21 entradas]
         i0[Altura nave] & i1[Horizontal nave] & i2[Existe tiro?] & i3[Dist. tiro] & i4[Altura tiro]
         i5[Existe inimigo?] & i6[Dist. inimigo] & i7[Altura inimigo] & i8[Tem especial?]
         i9[Espaço acima] & i10[Espaço abaixo]
         i11[Existe item?] & i12[Dist. item] & i13[Altura item] & i14[Item é vida?]
         i15[Perigo tiro] & i16[Onde: tiro] & i17[Perigo inimigo] & i18[Onde: inimigo]
+        i19[Teto à frente] & i20[Chão à frente]
     end
     subgraph Escondida [6 neurônios escondidos]
         h0((h0)) & h1((h1)) & h2((h2)) & h3((h3)) & h4((h4)) & h5((h5))
@@ -23,9 +24,9 @@ flowchart LR
     Entradas --> Escondida --> Saídas
 ```
 
-- **Camada escondida:** 6 neurônios (o padrão; ver [abaixo](#número-de-neurônios-escondidos-configurável)) × (19 pesos + 1 bias) = **120 números**.
+- **Camada escondida:** 6 neurônios (o padrão; ver [abaixo](#número-de-neurônios-escondidos-configurável)) × (21 pesos + 1 bias) = **132 números**.
 - **Camada de saída:** 6 neurônios × (6 pesos + 1 bias) = **42 números**.
-- **Total: 162 números.** Esses 162 números *são* o cérebro: duas redes com os mesmos 162 números jogam igual.
+- **Total: 174 números.** Esses 174 números *são* o cérebro: duas redes com os mesmos 174 números jogam igual.
 
 "Totalmente conectada": cada neurônio de uma camada recebe **todas** as saídas da camada anterior.
 
@@ -131,10 +132,10 @@ completo em [09 — Diário de decisões](09-diario-de-decisoes.md#a-nave-não-d
 
 ## A rede como lista: o genoma
 
-Para a evolução, a rede é "achatada" numa lista de 162 números (`networkToGenome`), nesta ordem:
+Para a evolução, a rede é "achatada" numa lista de 174 números (`networkToGenome`), nesta ordem:
 
 ```
-[ h0: w0..w18, bias ] [ h1: … ] … [ h5: … ]      ← 6 × 20 = 120 (camada escondida)
+[ h0: w0..w20, bias ] [ h1: … ] … [ h5: … ]      ← 6 × 22 = 132 (camada escondida)
 [ up: w0..w5, bias ] [ down: … ] … [ special: … ] ← 6 × 7  = 42 (camada de saída)
 ```
 
@@ -143,13 +144,13 @@ Para a evolução, a rede é "achatada" numa lista de 162 números (`networkToGe
 ## Número de neurônios escondidos (configurável)
 
 O padrão é 6 (`DEFAULT_HIDDEN_COUNT`), mas o painel tem um slider **Neurônios escondidos** (2 a 32). O tamanho do genoma
-é `neurônios × 20 + 6 × (neurônios + 1)`: 162 com 6, 214 com 8, 318 com 12.
+é `neurônios × 22 + 6 × (neurônios + 1)`: 174 com 6, 230 com 8, 342 com 12.
 
 | Neurônios | Genoma |
 |---|---|
-| 6 | 162 |
-| 8 | 214 |
-| 12 | 318 |
+| 6 | 174 |
+| 8 | 230 |
+| 12 | 342 |
 
 `setHiddenCount()` (`training.js`) converte **todas** as redes do treino de uma vez, com `resizeGenome()`:
 
@@ -169,7 +170,8 @@ carregam como 6.
 | 1 | 8 | 5 | 89 | posição da nave, tiro e inimigo mais próximos |
 | 2 | 9 | 6 | 102 | + "tem especial?" e a saída `special` |
 | 3 | 11 | 6 | 114 | + espaço acima e abaixo (terreno) |
-| 4 (atual) | 19 | 6 | 162 | + item coletável (4 entradas) e perigo iminente de tiros e inimigos (4 entradas) |
+| 4 | 19 | 6 | 162 | + item coletável (4 entradas) e perigo iminente de tiros e inimigos (4 entradas) |
+| 5 (atual) | 21 | 6 | 174 (com 6 escondidos; 286 com 10) | + teto e chão à frente, com sinal (2 entradas) |
 
 Entradas e saídas novas sempre entram **no fim** da lista. Assim, `upgradeGenome()` converte um genoma antigo sem
 perder o aprendizado:

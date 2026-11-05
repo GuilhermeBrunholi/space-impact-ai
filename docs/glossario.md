@@ -4,9 +4,9 @@
 |---|---|
 | **Agente** | programa que observa o ambiente, decide e age, num ciclo. Aqui: `getState` → cérebro → `act`, a cada frame |
 | **Ambiente** | o jogo (`game.js`) |
-| **Sensor / observação** | o que o agente lê do ambiente: `getState()` e as 19 entradas de `getInputs()` |
+| **Sensor / observação** | o que o agente lê do ambiente: `getState()` e as 21 entradas de `getInputs()` |
 | **Atuador / ação** | o que o agente faz: as 6 teclas aplicadas por `act()` |
-| **Espaço de observação** | o conjunto de todas as entradas possíveis (19 números entre 0 e 1) |
+| **Espaço de observação** | o conjunto de todas as entradas possíveis (21 números entre 0 e 1) |
 | **Espaço de ação** | o conjunto de ações possíveis (6 teclas, cada uma apertada ou não) |
 | **Política** | a regra que transforma observação em ação — aqui, a rede neural (ou as regras) |
 | **Agente reativo** | decide só pelo que vê agora, sem memória do passado. Os dois cérebros do projeto são reativos |

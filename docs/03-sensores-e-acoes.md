@@ -53,7 +53,7 @@ números normalizados — próxima camada).
 
 ## Camada 2 — `getInputs(state)` (brain-nn.js)
 
-Transforma o estado numa **lista fixa de 19 números entre 0 e 1**. Fixa porque a rede tem exatamente 19 entradas:
+Transforma o estado numa **lista fixa de 21 números entre 0 e 1**. Fixa porque a rede tem exatamente 21 entradas:
 se um número faltar (por exemplo, quando não há tiros na tela), tudo desalinha.
 
 | # | Nome no painel | Como é calculado | 0 significa | 1 significa |
@@ -77,6 +77,8 @@ se um número faltar (por exemplo, quando não há tiros na tela), tudo desalinh
 | 16 | Onde: tiro | altura (com folga) de onde o tiro vai passar, em relação à nave | bem acima | bem abaixo (0,5 = alinhado) |
 | 17 | Perigo inimigo | igual ao 15, para inimigos | nada vem | impacto agora |
 | 18 | Onde: inimigo | igual ao 16, para inimigos | bem acima | bem abaixo |
+| 19 | Teto à frente | quanto o teto dos próximos 150 px fica acima (+) ou invade (−) a altura da nave | invade 150 px ou mais: precisa descer | 150 px ou mais livres (0,5 = rente) |
+| 20 | Chão à frente | igual ao 19, para o chão | invade 150 px ou mais: precisa subir | 150 px ou mais livres (0,5 = rente) |
 
 ### Normalização
 
@@ -137,15 +139,20 @@ linha reta** até a ponta da nave:
 Saída: `[urgência, altura]`. Urgência = `1 − tempo ÷ 60` (0 = nada vem, 1 = impacto agora); a altura diz **para que
 lado desviar**. Limite: os inimigos não informam `vy`, então valem como se andassem em linha reta (ondas e zigue-zague
 fogem disso); só os mísseis teleguiados informam `vy`. A folga cobre parte do erro. O terreno não entra aqui — já tem
-os sensores 9 e 10.
+os sensores 9, 10, 19 e 20.
 
 ### `describeTerrain()` — espaço acima e abaixo
 
 Olha a **faixa** que vai da traseira da nave até 150 px à frente da ponta (`TERRAIN_LOOKAHEAD`). Para cada bloco de
-terreno nessa faixa:
+terreno nessa faixa, `isCeiling()` decide se ele é teto ou chão:
 
-- se o centro do bloco está **acima** do centro da hitbox da nave → é **teto**: o teto fica na base do bloco;
-- senão → é **chão**: o chão fica no topo do bloco (um pilar logo à frente conta como chão alto).
+- grudado no **topo** da área de jogo (`y ≤ 50`, os tetos das fases 5 e 6) → é **teto**: o teto fica na base do bloco;
+- grudado na **borda de baixo** (`y + altura ≥ 480`, o chão e os pilares das fases 3, 4, 7 e 8) → é **chão**: o chão
+  fica no topo do bloco;
+- solto no meio (nenhuma fase tem hoje) → decide o centro: acima do centro da hitbox da nave é teto, abaixo é chão.
+
+Antes valia só o centro. Com a nave no alto, um teto comprido (de 50 a 215, centro em 132) ficava **abaixo** do centro
+dela e virava "chão": o sensor dizia "encostando no chão" e escondia o teto.
 
 Sem terreno, o teto é o limite da área de jogo (50) e o chão é a borda da tela (480). O resultado é o espaço livre
 entre a **hitbox** da nave e o teto/chão, normalizado entre 0 e 150 px (`TERRAIN_RANGE`): mais longe que 150 px é
@@ -160,6 +167,33 @@ Exemplos medidos logo após o início de cada fase:
 | 5 | **0,10** | 1,00 | teto a só 15 px da nave |
 | 6 | 0,90 | 1,00 | teto mais alto no começo |
 | 7 | 1,00 | 1,00 | chão em y = 430, a 150 px |
+
+O limite dessas duas entradas: elas vão só de 0 a 150 px. Quando o terreno à frente **invade** a altura da nave, o
+valor trava em 0, o mesmo de quando a nave está só encostada no teto (segura). Os sensores 19 e 20 existem por isso.
+
+### `describeTerrainAhead()` — teto e chão à frente (entradas 19 e 20)
+
+Olha só a faixa **da ponta da nave até 150 px adiante** e mede a mesma coisa, mas **com sinal**: normaliza entre
+−150 e +150 px.
+
+| Valor | Significado |
+|---|---|
+| 0,5 | o teto (ou chão) à frente fica rente à hitbox da nave |
+| abaixo de 0,5 | ele **invade** a altura da nave: precisa descer (19) ou subir (20). 0 = 150 px ou mais de invasão |
+| acima de 0,5 | sobra espaço. 1 = 150 px ou mais |
+
+O caso que motivou o sensor (fase 6, melhor rede da geração 149): a nave seguia colada num teto baixo (base em 125) e
+entrou na faixa um teto mais comprido (base em 215). O sensor 9 caiu de 0,04 para 0, igual a "só encostada", e a rede
+apertou **para cima**. Medido de novo com o sensor novo, logo antes da batida:
+
+| Fase | Sensor 9 (espaço acima) | Sensor 19 (teto à frente) |
+|---|---|---|
+| 5 | 0 | **0,29**: o teto à frente desce ~60 px |
+| 6 | 0 | **0,20**: o teto à frente desce ~90 px |
+| 7, nave baixa diante de um pilar | sensor 10 = 0 | sensor 20 = **0,40**: o pilar sobe 30 px acima da base da nave |
+
+Com 150 px de antecedência e o terreno andando 1,75 px por frame, a rede tem ~85 frames (1,4 s) para reagir — dá para
+a nave descer mais de 200 px.
 
 ## Camada 3 — ações e `act(action)` (ai.js)
 

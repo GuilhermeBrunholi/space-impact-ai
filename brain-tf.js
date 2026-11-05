@@ -13,12 +13,12 @@ function tfDecide(state) {
     // 1. se o modelo ainda não foi treinado, não aperta nada
     if (!tfModel) return RELEASE_ALL;
 
-    // 2. os mesmos 19 números da gravação
+    // 2. os mesmos números da gravação (INPUT_COUNT)
     const inputs = getInputs(state);
 
     // 3 e 5. pergunta para a rede, e o tf.tidy limpa os tensores criados aqui dentro
     const outputs = tf.tidy(() => {
-        const inputTensor = tf.tensor2d([inputs]);        // formato [1, 19]: um frame só
+        const inputTensor = tf.tensor2d([inputs]);        // formato [1, INPUT_COUNT]: um frame só
         return tfModel.predict(inputTensor).dataSync();   // devolve as 6 notas como números comuns
     });
 
@@ -77,8 +77,8 @@ function createModel() {
     // 1. modelo sequencial: as camadas ficam empilhadas, uma depois da outra
     const model = tf.sequential();
 
-    // 2. camada oculta 1: recebe os 19 números do jogo
-    model.add(tf.layers.dense({ inputShape: [19], units: 32, activation: "relu" }));
+    // 2. camada oculta 1: recebe os números do jogo (INPUT_COUNT, hoje 21)
+    model.add(tf.layers.dense({ inputShape: [INPUT_COUNT], units: 32, activation: "relu" }));
 
     // 3. camada oculta 2
     model.add(tf.layers.dense({ units: 16, activation: "relu" }));
@@ -105,6 +105,12 @@ async function trainModel() {
     // 1. carrega os arquivos escolhidos no input
     setTfStatus("Carregando gravações...");
     const frames = await loadRecordings(files);
+    // gravações de antes dos sensores novos têm menos números: misturar quebraria o tensor
+    const oldFrames = frames.filter(frame => frame.inputs.length !== INPUT_COUNT).length;
+    if (oldFrames > 0) {
+        setTfStatus(`${oldFrames} frames gravados com ${frames.find(f => f.inputs.length !== INPUT_COUNT).inputs.length} entradas; a rede agora usa ${INPUT_COUNT}. Grave partidas novas.`);
+        return;
+    }
     shuffleFrames(frames);
 
     // 2. transforma em tensores
@@ -226,6 +232,14 @@ async function loadTfModel(source) {
         } else {
             setTfStatus(`Não foi possível carregar o modelo: ${error.message}`);
         }
+        return;
+    }
+
+    // modelo treinado antes dos sensores novos: ele espera outro número de entradas
+    const modelInputs = model.inputs[0].shape[1];
+    if (modelInputs !== INPUT_COUNT) {
+        model.dispose();
+        setTfStatus(`Este modelo foi treinado com ${modelInputs} entradas; a rede agora usa ${INPUT_COUNT}. Treine de novo com gravações novas.`);
         return;
     }
 

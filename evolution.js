@@ -68,6 +68,7 @@ const LEGACY_SHAPES = [
     { inputs: 8, outputs: 5 },   // 89 números: a primeira versão
     { inputs: 9, outputs: 6 },   // 102 números: + "tem especial?" e a saída "special"
     { inputs: 11, outputs: 6 },  // 114 números: + espaço livre acima e abaixo (terreno)
+    { inputs: 19, outputs: 6 },  // + item coletável e perigo iminente (com 6 escondidos: 162 números)
 ];
 
 function genomeLength(inputs, outputs) {

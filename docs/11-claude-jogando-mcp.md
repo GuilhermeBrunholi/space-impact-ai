@@ -63,7 +63,7 @@ Coordenadas em pixels numa tela de 840 × 480; `x` e `y` são o canto superior e
 | `enemies` | inimigos e chefes à frente da nave, do mais próximo ao mais longe; itens coletáveis vêm aqui com `isPowerUp: true` |
 | `enemyProjectiles` | tiros inimigos (`vx`, `vy`, `homing`) |
 | `terrain` | chão, teto e pilares; encostar mata, mesmo com escudo |
-| `sensors` | as 19 entradas da rede, com nome, para comparar com o que a IA enxerga |
+| `sensors` | as 21 entradas da rede, com nome, para comparar com o que a IA enxerga |
 
 `play` ainda devolve `ran` (frames rodados), `scoreGained` e `livesLost`.
 
@@ -147,7 +147,7 @@ mostram o que o demonstrador via.
 
 ### Como reaproveitar
 
-- Para gerar demonstrações novas já com as 19 entradas, grave `sensors` completos a cada frame (ou a cada poucos
+- Para gerar demonstrações novas já com as 21 entradas, grave `sensors` completos a cada frame (ou a cada poucos
   frames) no servidor MCP; hoje ele não grava nada.
 - O `demo-network.json` tem 11 entradas e 114 números: `upgradeGenome()` o converte para o formato atual (entradas
   novas com peso 0), caso queira injetá-lo na população.

@@ -52,7 +52,7 @@ O que ela **não** é:
 - **Não é supervisionada:** ninguém mostrou exemplos de jogada certa, por isso não há *backpropagation*.
 - **Não é deep learning:** a rede é rasa (uma camada escondida com 6 neurônios); redes profundas têm muitas camadas e
   milhares ou milhões de pesos.
-- **Não é IA generativa:** não gera texto nem imagem como o ChatGPT ou o Claude; transforma 19 números em 6 teclas.
+- **Não é IA generativa:** não gera texto nem imagem como o ChatGPT ou o Claude; transforma 21 números em 6 teclas.
 - **Não é aprendizado por reforço "clássico":** Q-learning, DQN e PPO aprendem a cada jogada, com gradiente; a
   neuroevolução só olha a nota final de cada nave.
 

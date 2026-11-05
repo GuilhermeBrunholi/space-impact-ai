@@ -105,7 +105,7 @@ Abaixo:
 
 O diagrama da rede **atual** (a nave jogando, a melhor sendo assistida, ou a rede aleatória):
 
-- à esquerda, as **19 entradas** com o valor atual de cada uma;
+- à esquerda, as **21 entradas** com o valor atual de cada uma;
 - no meio, os **6 neurônios escondidos**;
 - à direita, as **6 saídas** com o valor (já com o peso da tecla);
 - cada **linha** é um peso: verde = positivo, vermelho = negativo; grossura e opacidade = tamanho do peso;

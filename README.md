@@ -14,7 +14,7 @@ controla "por fora", como um jogador.
 - **Sensores:** a cada frame, o jogo vira 19 números entre 0 e 1 — altura e posição da nave, tiro e inimigo mais
   próximos, munição especial, espaço livre acima e abaixo, item coletável mais próximo (vida, míssil...) e o perigo
   iminente de tiros e inimigos.
-- **Rede neural:** 19 entradas → 6 neurônios (ajustável no painel, de 2 a 32) → 6 teclas (cima, baixo, esquerda, direita, tiro, especial); 162 pesos com 6 neurônios.
+- **Rede neural:** 21 entradas → 6 neurônios (ajustável no painel, de 2 a 32) → 6 teclas (cima, baixo, esquerda, direita, tiro, especial); 174 pesos com 6 neurônios.
 - **Neuroevolução:** 30 naves por geração; elitismo, torneio, cruzamento e mutação criam a próxima geração.
 - **Treino:** cada nave joga as 8 fases, cada uma do zero; cada fase vale até 1: metade `pontos ÷ recorde`, metade o progresso contra o chefe (0 a 8).
 - **Turbo:** ~18 mil frames do jogo por segundo, desligando o desenho dos frames extras.

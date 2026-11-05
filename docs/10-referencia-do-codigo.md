@@ -83,14 +83,14 @@ Detalhes em [13](13-imitacao-tensorflow.md).
 | `MAX_SHOT_WIDTH` (50), `MAX_ENEMY_WIDTH` (380) | maiores larguras de tiro e inimigo, para a distância mínima |
 | `TERRAIN_LOOKAHEAD` (150), `TERRAIN_RANGE` (150) | alcance e escala dos sensores de terreno |
 | `DANGER_HORIZON` (60), `DANGER_MARGIN` (20), `MAX_POWERUP_WIDTH` (80) | horizonte (frames) e folga vertical (px) do perigo iminente; maior largura de item |
-| `INPUT_COUNT` (19) | número de entradas |
+| `INPUT_COUNT` (21) | número de entradas |
 | `normalize(value, min, max)` | normalização min-max presa entre 0 e 1 |
 | `describeNearest(objects, player, maxObjectWidth)` | `[existe?, distância, altura relativa]` do objeto mais próximo à frente |
 | `describeTerrain(terrain, player)` | `[espaço acima, espaço abaixo]` |
 | `describeDanger(objects, player)` | `[urgência, altura]` do objeto que vai acertar a nave primeiro ([03](03-sensores-e-acoes.md#describedanger--perigo-iminente-entradas-1518)) |
 | `describeCollectible(powerups, player)` | `[existe?, distância, altura, é vida?]` do item mais próximo |
 | `nearestAhead(objects, player)` | o objeto mais próximo à frente da nave, ou `null` |
-| `getInputs(state)` | as 19 entradas ([03](03-sensores-e-acoes.md#camada-2--getinputsstate-brain-nnjs)) |
+| `getInputs(state)` | as 21 entradas ([03](03-sensores-e-acoes.md#camada-2--getinputsstate-brain-nnjs)) |
 | `HIDDEN_COUNT` (variável, padrão `DEFAULT_HIDDEN_COUNT` = 6; de `MIN_HIDDEN_COUNT` 2 a `MAX_HIDDEN_COUNT` 32), `ACTION_KEYS`, `OUTPUT_COUNT` (6) | formato da rede |
 | `pressThreshold` | limite para apertar (0,5; painel) |
 | `actionWeights` | peso fixo de cada tecla (painel; salvo com o treino) |
@@ -110,7 +110,7 @@ Detalhes em [13](13-imitacao-tensorflow.md).
 | `POPULATION_SIZE` (30), `ELITE_COUNT` (2), `TOURNAMENT_SIZE` (3) | parâmetros fixos |
 | `mutationRate` (0,1), `mutationStrength` (0,5) | parâmetros do painel |
 | `WEIGHT_LIMIT` (4) | limite absoluto de cada peso |
-| `networkToGenome(net)` / `genomeToNetwork(genome, hiddenCount)` | rede ↔ lista de números (162 com 6 neurônios) |
+| `networkToGenome(net)` / `genomeToNetwork(genome, hiddenCount)` | rede ↔ lista de números (174 com 6 neurônios) |
 | `resizeGenome(genome, from, to)` | muda o número de neurônios escondidos |
 | `setHiddenCount(count)` (training.js) | muda o tamanho de todas as redes do treino; diminuir recomeça a geração |
 | `randomGenome()` | genoma aleatório |
@@ -212,12 +212,12 @@ Detalhes em [13](13-imitacao-tensorflow.md).
 
 | Nome | Descrição |
 |---|---|
-| `INPUT_LABELS` | nomes das 19 entradas (usados na telemetria) |
+| `INPUT_LABELS` | nomes das 21 entradas (usados na telemetria) |
 | `SPECIAL_NAMES`, `KEY_NAMES` | nomes em português |
 | `PANEL_REFRESH_MS` (100) | intervalo de atualização |
 | `createPanel()` | monta o painel dentro de `#app-body` e liga os controles (inclusive gravação e treino TF; seções com `data-modes`) |
 | `bindSlider(id, getValue, setValue, format)` | liga um slider a uma variável |
-| `countWeights(net)` | número de pesos da rede (162) |
+| `countWeights(net)` | número de pesos da rede (174 com 6 neurônios) |
 | `refreshPanel()`, `refreshTraining()` | atualizam os textos e estados dos botões; `refreshPanel` também mostra/esconde as seções conforme `data-modes` e atualiza "Frames gravados" |
 
 ## `ai-telemetry.js` — telemetria
@@ -272,7 +272,7 @@ Detalhes em [13](13-imitacao-tensorflow.md).
 |---|---|
 | `PAGE_SCRIPT` | script injetado na página: `mcpStep`, `mcpStart`, `mcpSnapshot`, `mcpPlay` (o tempo só passa quando uma ferramenta pede) |
 | `Game` | abre o navegador (Edge → Chrome → Chromium) com o Playwright, sobe o `server.py` do jogo se a porta estiver livre |
-| `SENSOR_NAMES` | nomes das 19 entradas, na ordem de `getInputs()` |
+| `SENSOR_NAMES` | nomes das 21 entradas, na ordem de `getInputs()` |
 | `KEYS`, `MAX_FRAMES` (600) | teclas aceitas e frames máximos por chamada |
 | `HEADED` | `SPACE_IMPACT_HEADED=1`: janela visível e frames em tempo real |
 | `start_game`, `get_state`, `play`, `screenshot` | as 4 ferramentas ([11](11-claude-jogando-mcp.md)) |

@@ -9,6 +9,7 @@ const INPUT_LABELS = [
     "Existe item?", "Dist. item", "Altura item", "Item é vida?",
     "Perigo tiro", "Onde: tiro",
     "Perigo inimigo", "Onde: inimigo",
+    "Teto à frente", "Chão à frente",
 ];
 const SPECIAL_NAMES = { missile: "míssil", laser: "laser", wall: "parede" };
 const KEY_NAMES = { up: "↑ cima", down: "↓ baixo", left: "← esquerda", right: "→ direita", fire: "tiro", special: "especial" };

@@ -11,7 +11,7 @@ const TERRAIN_RANGE = 150;       // espaço livre a partir do qual tanto faz: 1 
 const DANGER_HORIZON = 60;   // frames à frente em que um impacto já conta como perigo (60 = 1 s)
 const DANGER_MARGIN = 20;    // folga vertical (px) em volta do objeto: a nave também se mexe até lá
 const MAX_POWERUP_WIDTH = 80;
-const INPUT_COUNT = 19;
+const INPUT_COUNT = 21;
 
 // (valor − min) / (max − min), preso entre 0 e 1 para nenhum caso inesperado escapar da faixa
 function normalize(value, min, max) {
@@ -96,27 +96,54 @@ function nearestAhead(objects, player) {
     return ahead.length === 0 ? null : ahead.reduce((a, b) => (a.x < b.x ? a : b));
 }
 
-// Espaço livre acima e abaixo da nave, olhando a faixa que ela ocupa e um pouco à frente.
-// Um bloco cujo centro fica acima do centro da nave é teto; abaixo, é chão (um pilar à frente também conta como chão).
-// Sem terreno, os limites são as bordas da área de jogo.
-function describeTerrain(terrain, player) {
-    const left = player.x;
-    const right = player.x + player.width + TERRAIN_LOOKAHEAD;
-    const top = player.hitbox.y;
-    const bottom = player.hitbox.y + player.hitbox.height;
-    const center = (top + bottom) / 2;
+// Teto ou chão? Um bloco grudado no topo da área de jogo é teto (fases 5 e 6); grudado na borda de baixo é chão
+// (fases 3, 4, 7 e 8). Só um bloco solto no meio é decidido pelo centro, comparado ao centro da nave.
+// Antes valia só o centro: com a nave no alto, um teto comprido (50 a 215) virava "chão" e o sensor mandava subir.
+function isCeiling(block, center) {
+    if (block.y <= PLAY_TOP) return true;
+    if (block.y + block.height >= mainCanvas.height) return false;
+    return block.y + block.height / 2 < center;
+}
 
+// O teto mais baixo e o chão mais alto entre os blocos da faixa horizontal [left, right].
+// Sem terreno, os limites são as bordas da área de jogo.
+function terrainLimits(terrain, left, right, center) {
     let ceiling = PLAY_TOP;
     let floor = mainCanvas.height;
     terrain.forEach(block => {
         if (block.x + block.width < left || block.x > right) return;   // fora da faixa
-        if (block.y + block.height / 2 < center) ceiling = Math.max(ceiling, block.y + block.height);
+        if (isCeiling(block, center)) ceiling = Math.max(ceiling, block.y + block.height);
         else floor = Math.min(floor, block.y);
     });
+    return { ceiling, floor };
+}
+
+// 9, 10: espaço livre acima e abaixo da nave, olhando a faixa que ela ocupa e um pouco à frente.
+// Só vai de 0 a 150 px: quando o terreno à frente invade a altura da nave, o valor trava em 0 — o mesmo de
+// "só encostada". Quem diz quanto ele invade são as entradas 19 e 20.
+function describeTerrain(terrain, player) {
+    const top = player.hitbox.y;
+    const bottom = player.hitbox.y + player.hitbox.height;
+    const { ceiling, floor } = terrainLimits(terrain, player.x, player.x + player.width + TERRAIN_LOOKAHEAD, (top + bottom) / 2);
 
     return [
         normalize(top - ceiling, 0, TERRAIN_RANGE),    // 0 = encostando no teto, 1 = bastante espaço
         normalize(floor - bottom, 0, TERRAIN_RANGE),   // 0 = encostando no chão, 1 = bastante espaço
+    ];
+}
+
+// 19, 20: o terreno que vem pela frente (da ponta da nave até 150 px adiante), com sinal.
+// Vai de −150 a +150 px: 0,5 = na altura exata da nave; abaixo de 0,5 = o terreno invade a altura dela
+// (0 = 150 px ou mais de invasão: precisa sair do caminho); acima de 0,5 = sobra espaço.
+function describeTerrainAhead(terrain, player) {
+    const top = player.hitbox.y;
+    const bottom = player.hitbox.y + player.hitbox.height;
+    const nose = player.x + player.width;
+    const { ceiling, floor } = terrainLimits(terrain, nose, nose + TERRAIN_LOOKAHEAD, (top + bottom) / 2);
+
+    return [
+        normalize(top - ceiling, -TERRAIN_RANGE, TERRAIN_RANGE),    // < 0,5 = o teto à frente desce: precisa descer
+        normalize(floor - bottom, -TERRAIN_RANGE, TERRAIN_RANGE),   // < 0,5 = o chão à frente sobe: precisa subir
     ];
 }
 
@@ -139,6 +166,7 @@ function getInputs(state) {
         ...describeCollectible(powerups, player),                             // 11, 12, 13, 14: item mais próximo (existe, dist., altura, é vida?)
         ...describeDanger(state.enemyProjectiles, player),                    // 15, 16: perigo iminente de tiro (urgência, altura)
         ...describeDanger(hostiles, player),                                  // 17, 18: perigo iminente de inimigo (urgência, altura)
+        ...describeTerrainAhead(state.terrain, player),                       // 19, 20: teto e chão à frente (com sinal)
     ];
 }
 
@@ -194,7 +222,7 @@ function createLayer(inputCount, neuronCount) {
 
 function createNetwork() {
     return {
-        hidden: createLayer(INPUT_COUNT, HIDDEN_COUNT),   // neurônios × (19 pesos + 1 bias)
+        hidden: createLayer(INPUT_COUNT, HIDDEN_COUNT),   // neurônios × (21 pesos + 1 bias)
         output: createLayer(HIDDEN_COUNT, OUTPUT_COUNT),  // 6 neurônios × (neurônios escondidos + 1 bias)
     };
 }

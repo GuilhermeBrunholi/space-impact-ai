@@ -10,7 +10,7 @@ contas escritas à mão. O código está em `brain-tf.js`; a gravação está em
 
 ```mermaid
 flowchart LR
-    H["Você joga<br/>(modo Você + Gravar partidas)"] -->|"recordStep(): 19 entradas + 6 teclas por frame"| R["recordedFrames"]
+    H["Você joga<br/>(modo Você + Gravar partidas)"] -->|"recordStep(): 21 entradas + 6 teclas por frame"| R["recordedFrames"]
     R -->|Baixar gravação| F["recording-AAAA-MM-DDTHH-MM-SS.json"]
     F -->|"Gravações (.json) → Treinar"| T["trainModel()<br/>tf.sequential 19→32→16→6"]
     T --> M["tfModel + tfThresholds"]
@@ -38,7 +38,7 @@ Só grava com `brainMode === "human"`, **Gravar partidas** marcado e a fase em a
 | Campo | Conteúdo |
 |---|---|
 | `level` | número da fase |
-| `inputs` | as **19 entradas** de `getInputs(getState())`, as mesmas que a rede da evolução vê ([03](03-sensores-e-acoes.md)) |
+| `inputs` | as **21 entradas** de `getInputs(getState())`, as mesmas que a rede da evolução vê ([03](03-sensores-e-acoes.md)) |
 | `actions` | 6 valores 0/1, na ordem de `ACTION_KEYS`: cima, baixo, esquerda, direita, tiro, especial |
 
 Detalhes:
@@ -69,12 +69,12 @@ arquivo ficam de fora.
 
 ### O modelo
 
-`createModel()` — uma rede **maior** que a da neuroevolução (que tem 6 neurônios escondidos e ~162 pesos), porque aqui
+`createModel()` — uma rede **maior** que a da neuroevolução (que tem 6 neurônios escondidos e ~174 pesos), porque aqui
 os pesos são achados por gradiente, não por sorteio:
 
 | Camada | Tamanho | Ativação |
 |---|---|---|
-| entrada | 19 | — |
+| entrada | 21 | — |
 | densa 1 | 32 | `relu` |
 | densa 2 | 16 | `relu` |
 | saída | 6 | `sigmoid` (uma nota de 0 a 1 por tecla) |
@@ -108,7 +108,7 @@ para depuração. O **Intervalo entre tiros** da seção **NAVE DA IA** vale par
 ## Limites desta abordagem
 
 1. **Imitar não é vencer.** A rede copia as jogadas **e os erros** de quem gravou ([11](11-claude-jogando-mcp.md)).
-2. **Só vê o que as 19 entradas mostram** ([09](09-diario-de-decisoes.md#lições)).
+2. **Só vê o que as 21 entradas mostram** ([09](09-diario-de-decisoes.md#lições)).
 3. **Não fica salva.** `tfModel` e `tfThresholds` vivem na memória da página: recarregar apaga, e é preciso treinar de
    novo. O treino evolutivo, esse sim, é salvo ([07](07-persistencia.md)).
 4. **Precisa de internet.** O `tf.min.js` (versão 4.22.0) vem do CDN `cdn.jsdelivr.net`, carregado no fim do `index.html`.

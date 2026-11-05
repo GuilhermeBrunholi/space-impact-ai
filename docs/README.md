@@ -46,7 +46,7 @@ python tools/build_docs.py
 ```mermaid
 flowchart LR
     G["game.js<br/>(o jogo original)"] -->|estado: posições, vidas, pontos| S["Sensores<br/>getState() + getInputs()"]
-    S -->|19 números entre 0 e 1| N["Rede neural<br/>19 → 6 → 6"]
+    S -->|21 números entre 0 e 1| N["Rede neural<br/>21 → 6 → 6"]
     N -->|6 valores entre 0 e 1| A["Atuadores<br/>act()"]
     A -->|setas, tiro, especial| G
     T["Treino<br/>(training.js)"] -->|nota de cada nave| E["Evolução<br/>(evolution.js)"]
@@ -54,10 +54,10 @@ flowchart LR
     T <-->|training.json| P["server.py"]
 ```
 
-1. **Sensores** — a cada frame, o estado do jogo vira **19 números entre 0 e 1** (altura e posição da nave,
+1. **Sensores** — a cada frame, o estado do jogo vira **21 números entre 0 e 1** (altura e posição da nave,
    tiro e inimigo mais próximos, munição especial, espaço livre acima e abaixo, item coletável mais próximo e
-   perigo iminente de tiros e inimigos).
-2. **Rede neural** — 19 entradas → 6 neurônios escondidos → **6 saídas** (cima, baixo, esquerda, direita, tiro,
+   perigo iminente de tiros e inimigos, teto e chão à frente).
+2. **Rede neural** — 21 entradas → 6 neurônios escondidos → **6 saídas** (cima, baixo, esquerda, direita, tiro,
    especial). Saída acima do limite = tecla apertada.
 3. **Neuroevolução** — 30 redes jogam; as melhores são copiadas, cruzadas e mutadas para formar a próxima geração.
    Ninguém escreve regras: o comportamento surge da seleção.
