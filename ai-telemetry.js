@@ -10,7 +10,6 @@ const END_LABELS = {
     shot: "tiro",
 };
 const ACTION_LABELS = { up: "↑ cima", down: "↓ baixo", left: "← esquerda", right: "→ direita", fire: "tiro", special: "especial" };
-const HEATMAP_GENERATIONS = 60;   // quantas gerações o mapa de calor mostra (as mais recentes)
 
 let telemetryColors = null;
 let staticChartsKey = "";   // os gráficos de gerações só são redesenhados quando algo muda
@@ -58,33 +57,21 @@ function createTelemetry() {
                 <span class="tl-key" style="background:var(--bad)"></span>peso negativo · linha grossa = peso forte ·
                 bolinha clara = valor alto · amarela = tecla apertada</p>
         </article>
-        <div class="tl-grid">
-            <article class="tl-card">
-                <h4 title="Cada fase vale até 1: metade é pontos da fase ÷ recorde da fase, metade é o progresso contra o chefe (0,3 por chegar nele, até 0,95 tirando vida, 1 ao matá-lo). Quando um recorde sobe, a régua fica mais exigente e a nota pode cair.">EVOLUÇÃO DA NOTA (0 A 8)</h4>
-                <canvas id="tl-evolution" class="tl-canvas" aria-label="Melhor nota e média por geração"></canvas>
-                <p class="tl-note"><span class="tl-key" style="background:var(--lcd)"></span>melhor
-                    <span class="tl-key" style="background:var(--panel-muted)"></span>média · cada fase vale até 1 (½ pontos ÷ recorde, ½ progresso contra o chefe)</p>
-            </article>
+        <article class="tl-card tl-evo">
+            <h4 title="Cada fase vale até 1: metade é pontos da fase ÷ recorde da fase, metade é o progresso contra o chefe (0,3 por chegar nele, até 0,95 tirando vida, 1 ao matá-lo). Quando um recorde sobe, a régua fica mais exigente e a nota pode cair.">EVOLUÇÃO DA NOTA (0 A 8)</h4>
+            <canvas id="tl-evolution" class="tl-canvas" aria-label="Melhor nota e média por geração"></canvas>
+            <p class="tl-note"><span class="tl-key" style="background:var(--lcd)"></span>melhor
+                <span class="tl-key" style="background:var(--panel-muted)"></span>média · cada fase vale até 1 (½ pontos ÷ recorde, ½ progresso contra o chefe)</p>
+        </article>`;
 
-            <article class="tl-card">
-                <h4>MELHOR PONTUAÇÃO POR FASE</h4>
-                <canvas id="tl-heatmap" class="tl-canvas" aria-label="Mapa de calor: melhor pontuação de cada fase em cada geração"></canvas>
-                <p class="tl-note">Coluna = geração, claro = mais pontos · à direita: última geração / recorde</p>
-            </article>
-
-            <article class="tl-card">
-                <h4>COMO AS FASES TERMINARAM (O QUE MATOU)</h4>
-                <canvas id="tl-ends" class="tl-canvas" aria-label="Como cada fase terminou na última geração"></canvas>
-                <p class="tl-note" id="tl-ends-legend"></p>
-            </article>
-
-            <article class="tl-card">
-                <h4>NOTAS DA ÚLTIMA GERAÇÃO</h4>
-                <canvas id="tl-scores" class="tl-canvas" aria-label="Nota de cada nave da última geração"></canvas>
-                <p class="tl-note"><span class="tl-key" style="background:var(--lcd)"></span>elite (passa intacta)
-                    <span class="tl-key" style="background:var(--lcd-dim)"></span>demais, da melhor para a pior</p>
-            </article>
-        </div>`;
+    // embaixo da geração em andamento: como cada fase terminou na última geração
+    const ends = document.createElement("article");
+    ends.className = "tl-card tl-ends-card";
+    ends.innerHTML = `
+        <h4>COMO AS FASES TERMINARAM (O QUE MATOU)</h4>
+        <canvas id="tl-ends" class="tl-canvas" aria-label="Como cada fase terminou na última geração"></canvas>
+        <p class="tl-note" id="tl-ends-legend"></p>`;
+    progress.after(ends);
 
     // no painel, junto do treino por imitação: fica dentro da seção do modo TF, então só aparece nesse modo
     const tfCard = document.createElement("article");
@@ -108,7 +95,7 @@ function createTelemetry() {
             <span class="value">-</span>
         </div>`).join("");
 
-    telemetry.querySelector("#tl-ends-legend").innerHTML = END_REASONS
+    ends.querySelector("#tl-ends-legend").innerHTML = END_REASONS
         .map(reason => `<span class="tl-key" style="background:var(--end-${reason})"></span>${END_LABELS[reason]}`)
         .join(" ");
 
@@ -134,14 +121,12 @@ function refreshTelemetry() {
 
     const last = training.history[training.history.length - 1];
     // o tamanho da janela entra na chave: os gráficos esticam com ela e precisam ser redesenhados
-    const key = [training.history.length, last && last.generation, training.lastScores.length,
+    const key = [training.history.length, last && last.generation, 
         document.body.clientWidth, window.innerHeight].join("|");
     if (key !== staticChartsKey) {
         staticChartsKey = key;
         drawEvolution();
-        drawHeatmap();
         drawEnds();
-        drawLastScores();
     }
 }
 
@@ -348,39 +333,6 @@ function mixColor(a, b, t) {
     return "rgb(" + ca.map((v, i) => Math.round(v + (cb[i] - v) * t)).join(",") + ")";
 }
 
-function drawHeatmap() {
-    const chart = prepareCanvas("tl-heatmap");
-    const { ctx, width, height } = chart;
-    const history = training.history.slice(-HEATMAP_GENERATIONS);
-    if (!history.some(h => h.levelBest)) return emptyMessage(chart, "Aparece depois da 1ª geração completa.");
-
-    const pad = { left: 30, right: 84, top: 2, bottom: 2 };
-    const cellW = (width - pad.left - pad.right) / history.length;
-    const cellH = (height - pad.top - pad.bottom) / LEVEL_COUNT;
-    const max = Math.max(1, ...history.filter(h => h.levelBest).flatMap(h => h.levelBest));
-
-    for (let l = 0; l < LEVEL_COUNT; l++) {
-        const rowY = pad.top + l * cellH;
-        ctx.fillStyle = telemetryColors.muted;
-        ctx.textAlign = "left";
-        ctx.fillText("F" + (l + 1), 4, rowY + cellH / 2);
-
-        history.forEach((h, g) => {
-            // raiz quadrada: sem ela, uma fase de 1.900 pontos apagaria todas as de 100
-            ctx.fillStyle = h.levelBest
-                ? mixColor(telemetryColors.bg, telemetryColors.lcd, Math.sqrt(h.levelBest[l] / max))
-                : telemetryColors.bg;
-            ctx.fillRect(pad.left + g * cellW, rowY + 1, Math.max(1, cellW - 1), cellH - 2);
-        });
-
-        const last = history[history.length - 1];
-        ctx.fillStyle = telemetryColors.fg;
-        ctx.textAlign = "right";
-        const lastBest = last.levelBest ? Math.round(last.levelBest[l]) : "-";
-        ctx.fillText(lastBest + " / " + Math.round(levelReference(l, training.levelRecords)), width - 4, rowY + cellH / 2);
-    }
-}
-
 function drawEnds() {
     const chart = prepareCanvas("tl-ends");
     const { ctx, width, height } = chart;
@@ -411,28 +363,6 @@ function drawEnds() {
             }
             x += w;
         });
-    });
-}
-
-function drawLastScores() {
-    const chart = prepareCanvas("tl-scores");
-    const { ctx, width, height } = chart;
-    const scores = training.lastScores;
-    if (scores.length === 0) return emptyMessage(chart, "Aparece depois da 1ª geração completa.");
-
-    const pad = { left: 44, right: 4, top: 10, bottom: 4 };
-    const max = Math.max(1, scores[0]);
-    const barW = (width - pad.left - pad.right) / scores.length;
-    const y = v => height - pad.bottom - (v / max) * (height - pad.top - pad.bottom);
-
-    ctx.textAlign = "right";
-    ctx.fillStyle = telemetryColors.muted;
-    ctx.fillText(max.toFixed(1), pad.left - 6, y(max));
-    ctx.fillText("0", pad.left - 6, y(0));
-
-    scores.forEach((score, i) => {
-        ctx.fillStyle = i < ELITE_COUNT ? telemetryColors.lcd : telemetryColors.lcdDim;
-        ctx.fillRect(pad.left + i * barW + 1, y(score), Math.max(1, barW - 2), y(0) - y(score));
     });
 }
 

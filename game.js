@@ -2944,8 +2944,9 @@ function animate(timestamp) {
 }
 animate(0);
 
-playButton.style.top = `${bgCanvas.getBoundingClientRect().height - 70}`+"px";
-exitButton.style.top = `${bgCanvas.getBoundingClientRect().height - 70}`+"px";
+// offsetHeight (e não getBoundingClientRect): o fit-screen.js escala a página com zoom, e o rect viria escalado
+playButton.style.top = `${bgCanvas.offsetHeight - 70}`+"px";
+exitButton.style.top = `${bgCanvas.offsetHeight - 70}`+"px";
 
 exitButton.addEventListener("click", () => {
     document.location.reload();   // !!! reloading this because game not loading properly second time, tried everything, still unknown bug
@@ -2960,7 +2961,7 @@ pauseButton.addEventListener("click", () => {
 playButton.addEventListener("click", gameStart);
 exitButton.addEventListener("click", gameStart);
 window.addEventListener("resize", ()=>{
-    playButton.style.top = `${bgCanvas.getBoundingClientRect().height - 70}`+"px";
-    exitButton.style.top = `${bgCanvas.getBoundingClientRect().height - 70}`+"px";
+    playButton.style.top = `${bgCanvas.offsetHeight - 70}`+"px";
+    exitButton.style.top = `${bgCanvas.offsetHeight - 70}`+"px";
 
 })
