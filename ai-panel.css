@@ -71,7 +71,7 @@
 #ai-panel button:focus-visible, #ai-panel input:focus-visible { outline: 2px solid var(--lcd); outline-offset: 1px; }
 
 .ai-modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
-#ai-panel .ai-modes button[data-mode="tf"] { grid-column: 1 / -1; }   /* rótulo longo: linha inteira */
+#ai-panel .ai-modes button[data-mode="tf"], #ai-panel .ai-modes button[data-mode="dqn"] { grid-column: 1 / -1; }   /* rótulo longo: linha inteira */
 #ai-panel .ai-section[hidden] { display: none; }
 
 /* gravação e treino por imitação */
@@ -92,7 +92,8 @@
 #recordingFiles::file-selector-button:hover { border-color: var(--lcd); }
 #ai-panel .ai-modes button.active,
 #ai-panel .ai-levels button.active,
-#ai-panel #ai-turbo.active { background: var(--lcd); color: #1b2117; border-color: var(--lcd); }
+#ai-panel #ai-turbo.active,
+#ai-panel #ai-dqn-turbo.active { background: var(--lcd); color: #1b2117; border-color: var(--lcd); }
 
 .ai-levels { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin-top: 4px; }
 #ai-panel .ai-levels button { padding: 2px 0; }
@@ -205,16 +206,20 @@ body { display: flex; flex-direction: column; min-height: 100vh; }
 /* Em telas largas o jogo encolhe para 560 px (o canvas continua 840×480 por dentro; só é desenhado menor),
    os gráficos ganham o resto da largura e esticam para preencher a altura.
    560 do jogo + ~600 dos gráficos + 300 do painel + margens. */
+/* cada modo mostra a sua telemetria: o dqn-telemetry.js troca data-brain no body */
+body:not([data-brain="dqn"]) .tl-dqn-only { display: none !important; }
+body[data-brain="dqn"] .tl-nn-only { display: none !important; }
+
 /* a regra vale com a janela "wide" (≥ 1500 px) ou, com o painel recolhido, "desktop" (≥ 1200 px) */
 :is(body.wide, body.desktop:not(.ai-panel-open)) {
     #ai-layout { grid-template-columns: 560px minmax(0, 1fr); }
     #ai-game-column, #ai-side-column { display: flex; flex-direction: column; }
     /* esquerda: jogo, geração em andamento e, esticando no resto, como as fases terminaram; direita: a rede e a evolução da nota */
     #tl-progress { flex: none; }
-    .tl-ends-card { flex: 1 1 0; }
+    .tl-ends-card, .tl-dqn-left { flex: 1 1 0; }
     #ai-side-column > .tl-card { flex: 5 1 0; }
     #ai-side-column > .tl-evo { flex: 3 1 0; }
-    .tl-ends-card, #ai-side-column .tl-card { display: flex; flex-direction: column; }
+    .tl-ends-card, .tl-dqn-left, #ai-side-column .tl-card { display: flex; flex-direction: column; }
     .tl-ends-card .tl-canvas, #ai-side-column .tl-canvas { flex: 1 1 0; height: auto; min-height: 90px; }
 }
 

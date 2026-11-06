@@ -31,6 +31,7 @@ function createPanel() {
                     <button type="button" data-mode="rules">Regras</button>
                     <button type="button" data-mode="nn">Rede</button>
                     <button type="button" data-mode="tf">Rede TensorFlow (imitação)</button>
+                    <button type="button" data-mode="dqn">Deep Q-Learning (DQN)</button>
                 </div>
             </section>
 
@@ -59,6 +60,25 @@ function createPanel() {
                 </div>
                 <!-- escondido: o botão acima abre a janela; escolha o .json e o .bin juntos -->
                 <input type="file" id="tfModelFiles" accept=".json,.bin" multiple hidden>
+            </section>
+
+            <section class="ai-section" data-modes="dqn">
+                <h4>TREINO (DEEP Q-LEARNING)</h4>
+                <div class="ai-train-buttons">
+                    <button type="button" id="ai-dqn-toggle">Iniciar treino</button>
+                    <button type="button" id="ai-dqn-watch">Assistir (sem aprender)</button>
+                    <button type="button" id="ai-dqn-save">Salvar no navegador</button>
+                    <button type="button" id="ai-dqn-load">Carregar do navegador</button>
+                </div>
+                <button type="button" id="ai-dqn-turbo" aria-pressed="false">Turbo: desligado</button>
+                <div class="ai-param">
+                    <label for="ai-dqn-speed"><span>Velocidade sem turbo</span><span id="ai-dqn-speed-value"></span></label>
+                    <input type="range" id="ai-dqn-speed" min="1" max="30" step="1">
+                </div>
+                <label class="ai-check"><input type="checkbox" id="ai-dqn-only-level"> Só a fase escolhida</label>
+                <button type="button" id="ai-dqn-reset">Zerar rede</button>
+                <p class="ai-note" id="ai-dqn-status"></p>
+                <p class="ai-note">Aprende a cada passo, com recompensa. Sem "Só a fase escolhida", cada episódio sorteia uma das 8 fases. A arma especial (X) não é usada.</p>
             </section>
 
             <section class="ai-section" data-modes="nn">
@@ -93,7 +113,7 @@ function createPanel() {
                 </div>
             </section>
 
-            <section class="ai-section" data-modes="rules nn tf">
+            <section class="ai-section" data-modes="rules nn tf dqn">
                 <h4>NAVE DA IA</h4>
                 <div class="ai-param">
                     <label for="ai-cooldown"><span>Intervalo entre tiros</span><span id="ai-cooldown-value"></span></label>
@@ -224,6 +244,21 @@ function createPanel() {
         });
     });
 
+    // Deep Q-Learning (as funções ficam no dqn.js; os gráficos, no dqn-telemetry.js)
+    panel.querySelector("#ai-dqn-toggle").addEventListener("click", () => {
+        if (dqn.active) stopDqn();
+        else startDqn();
+    });
+    panel.querySelector("#ai-dqn-watch").addEventListener("click", watchDqn);
+    panel.querySelector("#ai-dqn-save").addEventListener("click", () => saveDqn());
+    panel.querySelector("#ai-dqn-load").addEventListener("click", loadDqn);
+    panel.querySelector("#ai-dqn-reset").addEventListener("click", () => {
+        if (dqn.episodes === 0 || confirm("Zerar a rede do DQN? O que ela aprendeu (e não foi salvo) se perde.")) resetDqn();
+    });
+    panel.querySelector("#ai-dqn-turbo").addEventListener("click", () => { dqn.turbo = !dqn.turbo; });
+    panel.querySelector("#ai-dqn-only-level").addEventListener("change", event => { dqn.onlySelectedLevel = event.target.checked; });
+    bindSlider("ai-dqn-speed", () => dqn.speed, value => { dqn.speed = value; }, value => value + "x");
+
     // turbo
     panel.querySelector("#ai-turbo").addEventListener("click", () => {
         training.turbo = !training.turbo;
@@ -294,6 +329,17 @@ function refreshPanel() {
     document.getElementById("ai-special").textContent = "Arma especial (tecla X): " + SPECIAL_NAMES[specialAtttack] + " × " + specialCount;
 
     refreshTraining();
+    refreshDqnPanel();
+}
+
+function refreshDqnPanel() {
+    document.getElementById("ai-dqn-toggle").textContent = dqn.active ? "Pausar treino" : "Iniciar treino";
+    const turbo = document.getElementById("ai-dqn-turbo");
+    turbo.textContent = dqn.turbo ? "Turbo: ligado" : "Turbo: desligado";
+    turbo.classList.toggle("active", dqn.turbo);
+    turbo.setAttribute("aria-pressed", String(dqn.turbo));
+    document.getElementById("ai-dqn-speed").disabled = dqn.turbo;
+    document.getElementById("ai-dqn-status").textContent = dqn.status;
 }
 
 function refreshTraining() {

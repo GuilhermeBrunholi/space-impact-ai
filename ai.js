@@ -104,7 +104,7 @@ function createSpecial(level) {
 }
 
 // 🧠 Quem controla a nave: "human" = você no teclado, "rules" = brain-rules.js, "nn" = brain-nn.js,
-// "tf" = brain-tf.js (rede TensorFlow que imita as suas partidas gravadas)
+// "tf" = brain-tf.js (rede TensorFlow que imita as suas partidas gravadas), "dqn" = dqn.js (Deep Q-Learning)
 let brainMode = "nn";
 let recordingEnabled = false;    // caixa "Gravar partidas": só grava no modo humano e com ela marcada
 let network = createNetwork();   // rede atual: aleatória no início, depois vem do treino
@@ -113,7 +113,8 @@ const RELEASE_ALL = { up: false, down: false, left: false, right: false, fire: f
 
 function setBrainMode(mode) {
     brainMode = mode;
-    if (mode !== "nn") stopTraining();               // só a rede neural treina
+    if (mode !== "nn") stopTraining();               // só a rede neural treina por neuroevolução
+    if (mode !== "dqn") stopDqn();                   // e só o modo dqn treina por Q-learning
     if (mode === "human") act(RELEASE_ALL);         // solta as teclas que a IA estava segurando
 }
 
@@ -130,6 +131,7 @@ function aiStep() {
     let action;
     if (brainMode === "nn") action = nnDecide(state, network);
     else if (brainMode === "tf") action = tfDecide(state);
+    else if (brainMode === "dqn") action = dqnDecide(state);
     else action = decide(state);
     act(action);
     return action;   // o treino usa para contar quanto cada tecla é apertada
@@ -142,6 +144,8 @@ function aiLoop() {
     if (brainMode !== "human" && gameRunning) {
         if (training.active) 
             runTrainingFrame();
+        else if (dqn.active)
+            runDqnFrame();
         else 
             aiStep();
     }

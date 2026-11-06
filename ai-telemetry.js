@@ -19,7 +19,7 @@ let tfLossKey = "";         // o gráfico de loss também só é redesenhado qua
 function createTelemetry() {
     // embaixo do jogo: o que está acontecendo agora
     const progress = document.createElement("article");
-    progress.className = "tl-card";
+    progress.className = "tl-card tl-nn-only";
     progress.id = "tl-progress";
     progress.innerHTML = `
         <h4>TREINO · GERAÇÃO EM ANDAMENTO</h4>
@@ -50,14 +50,14 @@ function createTelemetry() {
     // na coluna ao lado: a rede e os gráficos das gerações
     const telemetry = document.getElementById("ai-side-column");
     telemetry.innerHTML = `
-        <article class="tl-card">
+        <article class="tl-card tl-nn-only">
             <h4>REDE NEURAL AO VIVO</h4>
             <canvas id="tl-network" class="tl-canvas tall" aria-label="Diagrama da rede neural com os valores atuais"></canvas>
             <p class="tl-note"><span class="tl-key" style="background:var(--lcd)"></span>peso positivo
                 <span class="tl-key" style="background:var(--bad)"></span>peso negativo · linha grossa = peso forte ·
                 bolinha clara = valor alto · amarela = tecla apertada</p>
         </article>
-        <article class="tl-card tl-evo">
+        <article class="tl-card tl-evo tl-nn-only">
             <h4 title="Cada fase vale até 1: metade é pontos da fase ÷ recorde da fase, metade é o progresso contra o chefe (0,3 por chegar nele, até 0,95 tirando vida, 1 ao matá-lo). Quando um recorde sobe, a régua fica mais exigente e a nota pode cair.">EVOLUÇÃO DA NOTA (0 A 8)</h4>
             <canvas id="tl-evolution" class="tl-canvas" aria-label="Melhor nota e média por geração"></canvas>
             <p class="tl-note"><span class="tl-key" style="background:var(--lcd)"></span>melhor
@@ -66,12 +66,13 @@ function createTelemetry() {
 
     // embaixo da geração em andamento: como cada fase terminou na última geração
     const ends = document.createElement("article");
-    ends.className = "tl-card tl-ends-card";
+    ends.className = "tl-card tl-ends-card tl-nn-only";
     ends.innerHTML = `
         <h4>COMO AS FASES TERMINARAM (O QUE MATOU)</h4>
         <canvas id="tl-ends" class="tl-canvas" aria-label="Como cada fase terminou na última geração"></canvas>
         <p class="tl-note" id="tl-ends-legend"></p>`;
     progress.after(ends);
+    createDqnTelemetry();   // dqn-telemetry.js: os cards que só aparecem no modo Deep Q-Learning
 
     // no painel, junto do treino por imitação: fica dentro da seção do modo TF, então só aparece nesse modo
     const tfCard = document.createElement("article");
@@ -118,6 +119,7 @@ function refreshTelemetry() {
     refreshProgress();
     drawNetwork();
     refreshTfLoss();
+    refreshDqnTelemetry();
 
     const last = training.history[training.history.length - 1];
     // o tamanho da janela entra na chave: os gráficos esticam com ela e precisam ser redesenhados
